@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/FuadTesfaye/gitbridge/actions"><img src="https://img.shields.io/badge/Tests-37%2F37%20Passed-2ea44f?style=for-the-badge&logo=githubactions&logoColor=white" alt="Tests" /></a>
+  <a href="https://github.com/FuadTesfaye/gitbridge/actions"><img src="https://img.shields.io/badge/Tests-44%2F44%20Passed-2ea44f?style=for-the-badge&logo=githubactions&logoColor=white" alt="Tests" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.8-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://bun.sh/"><img src="https://img.shields.io/badge/Bun-1.3-fbf0df?style=for-the-badge&logo=bun&logoColor=black" alt="Bun" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-f1c40f?style=for-the-badge" alt="License: MIT" /></a>
