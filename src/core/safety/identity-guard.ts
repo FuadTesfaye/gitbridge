@@ -46,6 +46,21 @@ export class IdentityGuard {
     };
   }
 
+  isInstalled(repoPath: string): boolean {
+    const hookFile = path.join(repoPath, ".git", "hooks", "pre-commit");
+    if (!fs.existsSync(hookFile)) return false;
+    const content = fs.readFileSync(hookFile, "utf-8");
+    return content.includes("gitbridge hook pre-commit") || content.includes("gb hook pre-commit");
+  }
+
+  async install(repoPath: string): Promise<boolean> {
+    return this.installPreCommitHook(repoPath);
+  }
+
+  async uninstall(repoPath: string): Promise<boolean> {
+    return this.uninstallPreCommitHook(repoPath);
+  }
+
   async installPreCommitHook(repoPath: string): Promise<boolean> {
     const git = new GitCli(repoPath);
     const root = await git.getRepoRoot();

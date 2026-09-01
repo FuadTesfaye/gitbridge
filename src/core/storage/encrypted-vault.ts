@@ -1,26 +1,33 @@
-import fs from "node:fs";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import os from "node:os";
 import type { CredentialStore } from "./credential-store";
-import { PathResolver, defaultPathResolver } from "../config/path-resolver";
 import { CredentialStoreError } from "@/utils/errors";
+import type { PathResolver } from "../config/path-resolver";
 
 export class EncryptedVaultCredentialStore implements CredentialStore {
   readonly name = "Encrypted Vault (AES-256-GCM)";
   private paths: PathResolver;
 
-  constructor(paths: PathResolver = defaultPathResolver) {
+  constructor(paths: PathResolver) {
     this.paths = paths;
   }
 
   async isAvailable(): Promise<boolean> {
-    return true; // Always available as local fallback
+    return true;
+  }
+
+  private getMachineSecret(): string {
+    const hostname = os.hostname();
+    const user = os.userInfo().username;
+    const homedir = os.homedir();
+    return `gitbridge-vault-key:${hostname}:${user}:${homedir}`;
   }
 
   private deriveKey(salt: Buffer): Buffer {
-    // Generate deterministic machine+user seed
-    const seed = `${os.hostname()}:${os.userInfo().username}:${this.paths.getBaseDir()}:gitbridge-v1`;
-    return crypto.pbkdf2Sync(seed, salt, 100000, 32, "sha256");
+    const secret = this.getMachineSecret();
+    return crypto.pbkdf2Sync(secret, salt, 100_000, 32, "sha256");
   }
 
   private readVault(): Record<string, string> {
@@ -30,16 +37,15 @@ export class EncryptedVaultCredentialStore implements CredentialStore {
     }
 
     try {
-      const raw = fs.readFileSync(file);
-      if (raw.length < 16 + 12 + 16) {
+      const buffer = fs.readFileSync(file);
+      if (buffer.length < 16 + 12 + 16) {
         return {};
       }
 
-      // Format: [16 bytes salt][12 bytes IV][16 bytes AuthTag][Ciphertext]
-      const salt = raw.subarray(0, 16);
-      const iv = raw.subarray(16, 28);
-      const tag = raw.subarray(28, 44);
-      const ciphertext = raw.subarray(44);
+      const salt = buffer.subarray(0, 16);
+      const iv = buffer.subarray(16, 28);
+      const tag = buffer.subarray(28, 44);
+      const ciphertext = buffer.subarray(44);
 
       const key = this.deriveKey(salt);
       const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
@@ -47,16 +53,19 @@ export class EncryptedVaultCredentialStore implements CredentialStore {
 
       const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
       return JSON.parse(decrypted.toString("utf-8"));
-    } catch (err: unknown) {
-      throw new CredentialStoreError(
-        `Failed to decrypt GitBridge vault: ${err instanceof Error ? err.message : String(err)}`
-      );
+    } catch {
+      return {};
     }
   }
 
   private writeVault(data: Record<string, string>): void {
     const file = this.paths.getEncryptedVaultFile();
     try {
+      const dir = path.dirname(file);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+      }
+
       const salt = crypto.randomBytes(16);
       const iv = crypto.randomBytes(12);
       const key = this.deriveKey(salt);
