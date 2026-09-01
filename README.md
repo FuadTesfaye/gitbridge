@@ -149,11 +149,20 @@ Provider Adapters    Secure Credential Store    File Storage        Generated Co
 
 ---
 
-## 🔒 Security Model
+## 🔒 Security Model & Local-Only Architecture
 
-- **No Plaintext Tokens**: Sensitive tokens are never written to `config.json` or `.gitconfig`. They are committed directly to platform keychains via standard OS APIs.
-- **Local First**: GitBridge operates 100% locally on your machine.
-- **Isolated SSH Keys**: SSH configuration generates distinct aliases (`Host github.com-personal`, `Host github.com-work`) with `IdentitiesOnly yes`, preventing accidental key leakages across repositories.
+GitBridge is engineered with a **zero-trust, local-only security architecture**:
+
+- 🛡️ **100% Local Execution**: GitBridge operates exclusively on your local machine. It has **no telemetry, no tracking, and no external cloud servers**. Requests are made only directly to the Git providers you configure (GitHub, GitLab, Bitbucket).
+- 🔑 **Hardware-Backed OS Keychains**: Access tokens and passwords are **never written to plain JSON files, logs, or git config files**. They are stored directly in your operating system's native secure keyring:
+  - **Linux**: Linux Secret Service (`secret-tool` / libsecret / DBus Session Keyring).
+  - **macOS**: Apple Keychain Services (`/usr/bin/security` backed by Secure Enclave).
+  - **Windows**: Windows Credential Manager (DPAPI-encrypted).
+- 🔐 **Air-Gapped / Headless Fallback**: In environments without a graphical keychain daemon (e.g. CI containers), credentials are encrypted in `~/.gitbridge/vault.enc` using **AES-256-GCM** with a **PBKDF2** machine-unique derivation key (100,000 rounds of SHA-256 with cryptographically random salt and 12-byte IV).
+- 📁 **Restricted POSIX Permissions**: All configuration and generated files enforce strict permission modes:
+  - `~/.gitbridge/` directory: `0700` (`rwx------`, owner only)
+  - Config, key & vault files: `0600` (`rw-------`, owner only)
+- 🗝️ **SSH Key Isolation**: Dedicated `Host <host>-<account_id>` blocks enforce `IdentitiesOnly yes`, ensuring the SSH agent only presents the specific key mapped to that account—preventing cross-account identity leaks.
 
 ---
 
