@@ -1,151 +1,149 @@
-# GitBridge 🌉
+<div align="center">
 
-> **Universal Git Identity, Multi-Account & Provider Management Layer**
-> Seamlessly manage identities, accounts, and providers (GitHub, GitLab, Bitbucket, Gitea) across Git workflows without intercepting or replacing the native `git` CLI.
+# 🌉 GitBridge
+
+**Universal Git Identity, Multi-Account & Provider Management Layer**
+
+*Never commit with the wrong email or push with the wrong account again.*
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Bun](https://img.shields.io/badge/Bun-1.3-fbf0df?logo=bun&logoColor=black)](https://bun.sh/)
+[![Tests](https://img.shields.io/badge/Tests-37%2F37%20Passing-brightgreen?logo=checkmarx)](https://github.com/FuadTesfaye/gitbridge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![IDE Support](https://img.shields.io/badge/IDE-VS%20Code%20%7C%20Cursor%20%7C%20Antigravity-blueviolet)](./extension)
+
+```
+        Developer / Editor (VS Code, Cursor, Antigravity, Terminal)
+                                    │
+                         (Native git commands)
+                                    ▼
+                                Native Git
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        │                           │                           │
+  [includeIf / .gitconfig]   [credential.helper]          [~/.ssh/config]
+        │                           │                           │
+        ▼                           ▼                           ▼
+  Identity Engine             Secure Keyring              SSH Host Router
+(personal vs work email)   (macOS / Linux / Windows)   (github.com-work alias)
+```
+
+</div>
 
 ---
 
-## 🌟 Highlights
+## 💡 Why GitBridge?
 
-- ⚡ **Native Git First**: Works with native `git commit`, `git push origin main`, and `git clone`. No intrusive executable wrappers or aliases needed.
-- 🗂️ **Directory-Based Identity Switching**: Powered by Git's official `includeIf` conditional includes (`~/Projects/work/**` vs `~/Projects/personal/**`).
-- 🔑 **Multi-Account OAuth & PAT Credential Helper**: Plugs into `credential.helper` to retrieve tokens on-demand from your OS keychain.
-- 🛡️ **Zero Plaintext Secrets**: Sensitive access tokens are stored in the **Linux Secret Service (secret-tool)**, **macOS Keychain**, or **Windows Credential Manager** with an AES-256-GCM encrypted vault fallback.
-- 🚀 **SSH Multi-Key Host Routing**: Dynamically creates SSH Host aliases (`github.com-work`, `github.com-personal`) and links keys to accounts seamlessly.
-- 🚨 **Pre-Commit Identity Safety Guard**: Optional opt-in check to prevent accidental commits with mismatched emails in work repositories.
-- 🔄 **Multi-Remote Parallel Push**: Push branches to GitHub, GitLab, and Bitbucket simultaneously with `gitbridge push --all`.
-- 🔁 **Reversible & Non-Destructive**: Safe managed blocks in `~/.gitconfig` and `~/.ssh/config` with automated backups and instant rollback on `gitbridge disable`.
+Managing multiple Git identities (Personal, Work, Client, Open-Source) across different providers (GitHub, GitLab, Bitbucket) is frustrating and error-prone:
+- ❌ **Accidental commits** signed with your personal email in corporate repos (or vice versa).
+- ❌ **SSH Key collisions** when trying to push to multiple GitHub accounts from the same machine.
+- ❌ **Plaintext tokens** lingering in insecure config files.
+- ❌ **Bloated wrapper scripts** that slow down everyday `git` commands.
+
+### The GitBridge Solution:
+- ⚡ **100% Native Git First**: Zero performance overhead. You still run `git commit`, `git push origin main`, and `git pull`. GitBridge seamlessly configures Git's native extension points (`includeIf`, `credential.helper`, `~/.ssh/config Include`).
+- 🗂️ **Zero-Friction Directory Routing**: Enter `~/Personal` and Git automatically signs as your personal email. Enter `~/Projects/work` and it automatically switches to your corporate identity and signing key.
+- 🔒 **Zero Plaintext Secrets**: OAuth and PAT tokens are stored exclusively in your operating system's hardware-backed secure keyring (**Linux Secret Service**, **macOS Keychain**, or **Windows Credential Manager**).
+- 🖥️ **First-Class IDE Extension**: Real-time status bar widget and sidebar explorer for **VS Code**, **Cursor**, **Windsurf**, and **Antigravity IDE**.
+- 🚀 **Dual Binaries**: Use `gitbridge` or the ultra-fast `gb` alias everywhere.
 
 ---
 
-## 📦 Installation
+## ⚡ Installation & Quick Start
 
+### 1. Global Installation
 ```bash
-# Install globally via npm / bun
+# Via Bun (recommended)
+bun add -g gitbridge
+
+# Or via npm
 npm install -g gitbridge
+```
 
-# Exposes both 'gitbridge' and 'gb'
-gitbridge --version
-gb --version
+### 2. Interactive Onboarding Wizard
+Configure your primary identity, secondary work identity, and directory rules in under 60 seconds:
+```bash
+gb setup
+```
+
+### 3. Verify System Health
+```bash
+gb doc
 ```
 
 ---
 
-## 🚀 Quick Start
+## ⌨️ Fast Command Matrix (`gitbridge` / `gb`)
 
-### 1. Run Interactive Onboarding
-```bash
-gitbridge setup
-```
-The interactive wizard will guide you through:
-1. Creating your primary and secondary Git identities (e.g. `personal`, `work`).
-2. Connecting providers (GitHub Device Flow, GitLab PAT, Bitbucket).
-3. Mapping workspace directory rules (e.g. `~/Projects/work` $\to$ `work`).
-4. Activating Git and SSH integration.
+GitBridge exposes both `gitbridge` and `gb` binaries with intuitive short aliases:
 
-### 2. Verify System Diagnostics
-```bash
-gitbridge doctor
-```
-Checks Git CLI version, Bun runtime, OS Keychain backends, SSH keys, and provider API connectivity.
-
-### 3. Initialize a Repository Profile
-```bash
-cd ~/Projects/my-app
-gitbridge init
-```
-Interactively selects your Git identity, links provider remotes, and optionally installs the pre-commit identity safety guard.
-
-### 4. Normal Git Operations
-```bash
-git add .
-git commit -m "feat: core functionality"
-git push origin main
-```
-Native Git automatically uses the correct identity and authentication credentials!
+| Category | Fast Command | Full Command | Description |
+|---|---|---|---|
+| **Overview** | `gb st` | `gitbridge status` | Show overall status, active identities, accounts & rules |
+| **Context** | `gb ctx` | `gitbridge context` | Show resolved identity & email mismatch alerts for current folder |
+| **Switching** | `gb sw [id]` | `gitbridge switch [id]` | Switch active Git identity (for current repo or globally with `-g`) |
+| **Init** | `gb init` | `gitbridge init` | Initialize GitBridge profile & pre-commit safety guard for current repo |
+| **Identities** | `gb id ls` | `gitbridge identity list` | List all configured commit identities |
+| | `gb id add` | `gitbridge identity add` | Create a new Git identity (interactive or with flags) |
+| | `gb id use <id>` | `gitbridge identity use <id>` | Set global default Git identity |
+| | `gb id rm <id>` | `gitbridge identity remove <id>` | Delete an identity |
+| **Accounts** | `gb acc ls` | `gitbridge account list` | List authenticated provider accounts |
+| | `gb acc rm <id>` | `gitbridge account remove <id>` | Remove account and securely wipe tokens from OS keyring |
+| **Auth** | `gb auth login` | `gitbridge auth login [prov]` | Authenticate with GitHub (Device Flow/PAT), GitLab, or Bitbucket |
+| | `gb auth logout` | `gitbridge auth logout <prov>` | Log out and revoke credentials |
+| **Rules** | `gb rules ls` | `gitbridge rule list` | List directory routing rules |
+| | `gb rule add` | `gitbridge rule add [dir] [id]` | Map a folder path to a Git identity |
+| | `gb rule rm <id>` | `gitbridge rule remove <id>` | Remove a directory routing rule |
+| **Remotes** | `gb rem ls` | `gitbridge remote list` | List remotes for current repository |
+| | `gb rem add` | `gitbridge remote add <n> <u>` | Add remote with optional account SSH routing |
+| **Multi-Push** | `gb push --all` | `gitbridge push --all` | Push branch to all configured remotes simultaneously |
+| **Integrations**| `gb enable` | `gitbridge enable` | Safely inject GitBridge blocks into `~/.gitconfig` and `~/.ssh/config` |
+| | `gb disable` | `gitbridge disable` | Safely remove integrations and restore original configs |
+| **Doctor** | `gb doc` | `gitbridge doctor` | Run full diagnostic suite (Git, Keyring, SSH keys, Provider APIs) |
 
 ---
 
-## 📖 Command Reference
+## 🖥️ IDE Extension (VS Code, Cursor & Antigravity)
 
-| Command | Alias | Description |
-|---|---|---|
-| `gitbridge setup` | | Interactive onboarding wizard for initial configuration |
-| `gitbridge status` | | Show overview of status, identities, accounts, and directory rules |
-| `gitbridge context` | `gb ctx` | Show context breakdown for current directory/repository |
-| `gitbridge enable` | | Activate GitBridge integration in `~/.gitconfig` and `~/.ssh/config` |
-| `gitbridge disable` | | Safely deactivate and restore original Git configuration |
-| `gitbridge switch [id]` | | Quick shortcut to switch identity for repo or globally (`-g`) |
-| `gitbridge init` | | Configure GitBridge identity and remotes for the current repo |
-| `gitbridge identity list` | `gb id ls` | List all configured identities |
-| `gitbridge identity add` | `gb id add` | Add a new Git identity (interactive or with flags) |
-| `gitbridge identity use <id>` | | Set an identity as global default |
-| `gitbridge identity remove <id>`| `gb id rm` | Remove an identity |
-| `gitbridge account list` | `gb acc ls`| List authenticated provider accounts |
-| `gitbridge account remove <id>` | `gb acc rm`| Remove an account and wipe its token |
-| `gitbridge auth login [prov]` | | Authenticate with GitHub, GitLab, or Bitbucket |
-| `gitbridge auth logout <prov>` | | Log out of a provider and remove credentials |
-| `gitbridge provider list` | `gb prov ls`| List supported and registered Git providers |
-| `gitbridge rule list` | `gb rule ls`| List directory routing rules |
-| `gitbridge rule add [dir] [id]` | | Map a directory path to an identity |
-| `gitbridge rule remove <id>` | `gb rule rm`| Remove a directory routing rule |
-| `gitbridge remote list` | | List remotes for current repository |
-| `gitbridge remote add <n> <u>` | | Add remote with optional account SSH alias |
-| `gitbridge push [remote]` | | Push branch to configured remotes or multi-provider (`--all`) |
-| `gitbridge doctor` | | Run complete system diagnostic health check |
+GitBridge includes a built-in extension in [`extension/`](./extension) compatible with **VS Code**, **Cursor**, **Windsurf**, and **Google Antigravity IDE**:
 
----
-
-## 🏗️ Architecture & Resolution Precedence
-
-When Git or GitBridge resolves an identity for any directory:
-
-$$\text{Local Repository Profile} \succ \text{Directory Rule (includeIf)} \succ \text{Global Default Identity} \succ \text{System Git Config}$$
+<div align="center">
 
 ```
-                                  Developer / IDE
-                               (VS Code, Terminal, Neovim, JetBrains)
-                                         │
-                                         │  (Standard git commands)
-                                         ▼
-                                     Native Git
-                                         │
-             ┌───────────────────────────┼───────────────────────────┐
-             │                           │                           │
-    [includeIf / .gitconfig]    [credential.helper]           [~/.ssh/config]
-             │                           │                           │
-             ▼                           ▼                           ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
-│                       GitBridge Core (`gitbridge` / `gb`)                  │
-│                                                                            │
-│  ┌─────────────────────────┐  ┌──────────────────────┐  ┌────────────────┐ │
-│  │     Identity Engine     │  │     Remote Engine    │  │  Safety Engine │ │
-│  │ (Resolves name & email) │  │  (URL / Host routing)│  │ (Pre-commit)   │ │
-│  └────────────┬────────────┘  └──────────┬───────────┘  └───────┬────────┘ │
-│               │                          │                      │          │
-│               └──────────────────────────┼──────────────────────┘          │
-│                                          │                                 │
-│                               ┌──────────▼───────────┐                     │
-│                               │   Context Resolver   │                     │
-│                               │ (Precedence: Repo >  │                     │
-│                               │  Directory > Global) │                     │
-│                               └──────────┬───────────┘                     │
-│                                          │                                 │
-│         ┌────────────────────────────────┴───────────────────┐             │
-│         ▼                                                    ▼             │
-│  ┌──────────────┐                                    ┌──────────────┐      │
-│  │ Auth Engine  │                                    │ Config Store │      │
-│  └──────┬───────┘                                    └──────┬───────┘      │
-└─────────┼───────────────────────────────────────────────────┼──────────────┘
-          │                                                   │
-   ┌──────┴───────────────┐                            ┌──────┴──────────────┐
-   ▼                      ▼                            ▼                     ▼
-Provider Adapters    Secure Credential Store    File Storage        Generated Config
-- GitHub             - Linux Secret Service    ~/.gitbridge/        - main.gitconfig
-- GitLab             - macOS Keychain          - config.json        - ssh_config
-- Bitbucket          - Windows Cred Manager    - identities.json    - rules/*.gitconfig
-- Custom / Gitea     - Fallback Encrypted Vault - accounts.json
+│ Activity Bar  │ GitBridge Explorer                                         │
+│ ───────────── │ ────────────────────────────────────────────────────────── │
+│ 🌉 GitBridge  │ ▼ ACTIVE CONTEXT                                           │
+│               │   📁 Repository: my-awesome-app                            │
+│               │   👤 Identity: Fuad Tesfaye <personal@example.com>         │
+│               │   🏷️  Source: Directory Rule (~/Personal)                   │
+│               │   🐙 Account: @FuadTesfaye (GitHub)                        │
+│               │   🔗 Remote: origin (git@github.com:...)                   │
+│               │                                                            │
+│               │ ▼ IDENTITIES                                           [+] │
+│               │   ✔ personal (Fuad Tesfaye <personal@example.com>)         │
+│               │   ○ work (Fuad Tesfaye <work@company.com>)                 │
+│               │                                                            │
+│               │ ▼ ACCOUNTS & PROVIDERS                                 [+] │
+│               │   🐙 GitHub: @FuadTesfaye (OAuth Keyring)                  │
+│               │   🦊 GitLab: @fuad_corp (PAT)                              │
+│               │                                                            │
+│               │ ▼ DIRECTORY RULES                                      [+] │
+│               │   📁 ~/Personal ➔ personal                                 │
+│               │   📁 ~/Projects/work ➔ work                                │
+└────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│ Status Bar: [$(person) personal: Fuad Tesfaye] [$(github) @FuadTesfaye]    │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
+
+</div>
+
+### Extension Highlights:
+- 👤 **Live Status Bar Widget**: Shows active identity badge and provider account at all times.
+- 🔄 **Real-Time State Watcher**: Run `gb sw work` in your terminal and the IDE status bar and explorer update instantly without an editor reload.
+- ⚠️ **Mismatch Warning**: Highlights mismatched `.git/config` emails before you commit.
+- 🚀 **One-Click Multi-Push**: Trigger parallel pushes directly from the sidebar.
 
 ---
 
@@ -166,13 +164,39 @@ GitBridge is engineered with a **zero-trust, local-only security architecture**:
 
 ---
 
-## 🧪 Testing
+## 🏗️ Identity Resolution Precedence
+
+When Git or GitBridge resolves an identity for any directory:
+
+$$\text{Local Repository Profile} \succ \text{Directory Rule (includeIf)} \succ \text{Global Default Identity} \succ \text{System Git Config}$$
+
+```mermaid
+flowchart TD
+    Start["Git Action Triggered (commit / push / clone)"] --> CheckRepo{"Explicit Repo Profile in .git/config?"}
+    CheckRepo -- Yes --> ApplyRepo["Apply Repository Identity"]
+    CheckRepo -- No --> CheckRule{"Matches Directory includeIf Rule?"}
+    CheckRule -- Yes --> ApplyRule["Apply Directory Rule Identity"]
+    CheckRule -- No --> CheckGlobal{"GitBridge Default Identity?"}
+    CheckGlobal -- Yes --> ApplyGlobal["Apply GitBridge Global Default"]
+    CheckGlobal -- No --> ApplySystem["Fallback to System Git Config"]
+
+    ApplyRepo --> Exec["Execute Native Git Command Seamlessly"]
+    ApplyRule --> Exec
+    ApplyGlobal --> Exec
+    ApplySystem --> Exec
+```
+
+---
+
+## 🧪 Testing & Verification
+
+GitBridge is verified with a comprehensive automated test suite covering unit schemas, credential stores, injectors, URL parsers, and full Git lifecycle integrations:
 
 ```bash
-# Run unit & integration tests
+# Run all unit & integration tests
 bun test
 
-# Run typecheck
+# Run strict TypeScript typechecks
 bun run typecheck
 ```
 
@@ -180,4 +204,4 @@ bun run typecheck
 
 ## 📄 License
 
-MIT © Fuad Tesfaye
+MIT © [Fuad Tesfaye](https://github.com/FuadTesfaye)
