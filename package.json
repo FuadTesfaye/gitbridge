@@ -1,12 +1,12 @@
 {
-  "name": "gitbridge",
+  "name": "@fuad24/gitbridge",
   "version": "0.1.0",
   "description": "Universal Git Identity & Multi-Account Management Layer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "gitbridge": "./dist/bin/gitbridge.js",
-    "gb": "./dist/bin/gb.js"
+    "gitbridge": "dist/bin/gitbridge.js",
+    "gb": "dist/bin/gb.js"
   },
   "files": [
     "dist",
@@ -34,6 +34,9 @@
   ],
   "author": "Fuad Tesfaye",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/FuadTesfaye/gitbridge.git"
@@ -53,7 +56,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^22.13.9",
-    "esbuild": "^0.28.2",
+    "esbuild": "^0.25.0",
     "typescript": "^5.8.2"
   }
 }

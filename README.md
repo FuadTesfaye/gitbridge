@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/@fuad24/gitbridge"><img src="https://img.shields.io/npm/v/@fuad24/gitbridge?style=for-the-badge&logo=npm&color=CB3837" alt="npm package" /></a>
   <a href="https://github.com/FuadTesfaye/gitbridge/actions"><img src="https://img.shields.io/badge/Tests-44%2F44%20Passed-2ea44f?style=for-the-badge&logo=githubactions&logoColor=white" alt="Tests" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.8-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://bun.sh/"><img src="https://img.shields.io/badge/Bun-1.3-fbf0df?style=for-the-badge&logo=bun&logoColor=black" alt="Bun" /></a>
@@ -65,10 +66,10 @@
 ### 1. Global Installation
 ```bash
 # Via Bun (Fastest)
-bun add -g gitbridge
+bun add -g @fuad24/gitbridge
 
 # Or via npm
-npm install -g gitbridge
+npm install -g @fuad24/gitbridge
 ```
 
 ### 2. Run the 60-Second Setup Wizard
