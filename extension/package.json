@@ -1,0 +1,200 @@
+{
+  "name": "gitbridge-vscode",
+  "displayName": "GitBridge",
+  "description": "Universal Git Identity & Multi-Account Management Layer for VS Code, Cursor, and Antigravity IDE",
+  "version": "0.1.0",
+  "publisher": "fuadtesfaye",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "identity",
+    "multi-account",
+    "github",
+    "gitlab",
+    "bitbucket",
+    "ssh",
+    "credential-helper",
+    "cursor",
+    "antigravity"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitbridge-explorer",
+          "title": "GitBridge",
+          "icon": "media/gitbridge-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "gitbridge-explorer": [
+        {
+          "id": "gitbridge.context",
+          "name": "Active Context"
+        },
+        {
+          "id": "gitbridge.identities",
+          "name": "Git Identities"
+        },
+        {
+          "id": "gitbridge.accounts",
+          "name": "Accounts & Providers"
+        },
+        {
+          "id": "gitbridge.rules",
+          "name": "Directory Rules"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "gitbridge.switchIdentity",
+        "title": "GitBridge: Switch Git Identity",
+        "category": "GitBridge",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "gitbridge.initRepo",
+        "title": "GitBridge: Initialize Repository Profile",
+        "category": "GitBridge",
+        "icon": "$(repo)"
+      },
+      {
+        "command": "gitbridge.addIdentity",
+        "title": "GitBridge: Add Git Identity",
+        "category": "GitBridge",
+        "icon": "$(add)"
+      },
+      {
+        "command": "gitbridge.addRule",
+        "title": "GitBridge: Add Directory Rule",
+        "category": "GitBridge",
+        "icon": "$(add)"
+      },
+      {
+        "command": "gitbridge.authLogin",
+        "title": "GitBridge: Connect Git Provider Account",
+        "category": "GitBridge",
+        "icon": "$(account)"
+      },
+      {
+        "command": "gitbridge.authLogout",
+        "title": "GitBridge: Disconnect Account",
+        "category": "GitBridge"
+      },
+      {
+        "command": "gitbridge.pushAll",
+        "title": "GitBridge: Push to All Remotes",
+        "category": "GitBridge",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "gitbridge.doctor",
+        "title": "GitBridge: Run System Diagnostics (Doctor)",
+        "category": "GitBridge",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "gitbridge.enable",
+        "title": "GitBridge: Enable Git Integration",
+        "category": "GitBridge"
+      },
+      {
+        "command": "gitbridge.disable",
+        "title": "GitBridge: Disable Git Integration",
+        "category": "GitBridge"
+      },
+      {
+        "command": "gitbridge.refresh",
+        "title": "GitBridge: Refresh Explorer",
+        "category": "GitBridge",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gitbridge.refresh",
+          "when": "view =~ /^gitbridge\\./",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitbridge.addIdentity",
+          "when": "view == gitbridge.identities",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitbridge.authLogin",
+          "when": "view == gitbridge.accounts",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitbridge.addRule",
+          "when": "view == gitbridge.rules",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitbridge.switchIdentity",
+          "when": "viewItem == gitbridge-identity",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitbridge.pushAll",
+          "when": "viewItem == gitbridge-context-remotes",
+          "group": "inline@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "GitBridge",
+      "properties": {
+        "gitbridge.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the active GitBridge identity badge in the status bar."
+        },
+        "gitbridge.statusBar.showEmail": {
+          "type": "boolean",
+          "default": true,
+          "description": "Display email alongside identity name in the status bar."
+        },
+        "gitbridge.safety.warnOnMismatch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a non-intrusive warning when the repository git email does not match the active directory rule."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "bun run build",
+    "build": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "test": "bun test",
+    "typecheck": "bun x tsc --noEmit",
+    "package": "bun x @vscode/vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  }
+}

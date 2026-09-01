@@ -2,4 +2,5 @@
 lockfile = true
 
 [test]
+preload = ["./extension/test/preload.ts"]
 coverage = true
