@@ -16,11 +16,11 @@ import { handleSetupCommand } from "./commands/setup";
 import { handleCredentialCommand } from "./commands/credential";
 import { handleHookCommand } from "./commands/hook";
 
-export function createProgram(): Command {
+export function createProgram(name = "gitbridge"): Command {
   const program = new Command();
 
   program
-    .name("gitbridge")
+    .name(name)
     .description("Universal Git Identity & Multi-Account Management Layer")
     .version("0.1.0");
 
@@ -33,6 +33,7 @@ export function createProgram(): Command {
   // Status & Context
   program
     .command("status")
+    .alias("st")
     .description("Show overall GitBridge status, active identities, accounts, and rules")
     .action(() => handleStatusCommand());
 
@@ -56,6 +57,7 @@ export function createProgram(): Command {
   // Switch Shortcut
   program
     .command("switch [identityId]")
+    .alias("sw")
     .description("Quickly switch active Git identity (globally or for current repository)")
     .option("-g, --global", "Switch global default identity instead of local repo")
     .action((identityId, opts) => handleSwitchCommand(identityId, opts));
@@ -67,7 +69,11 @@ export function createProgram(): Command {
     .action(() => handleRepoInit());
 
   // Identity Subcommands
-  const identityCmd = program.command("identity").alias("id").description("Manage Git commit identities (name, email, signing key)");
+  const identityCmd = program
+    .command("identity")
+    .alias("id")
+    .description("Manage Git commit identities (name, email, signing key)");
+  
   identityCmd.command("list").alias("ls").description("List all configured identities").action(() => handleIdentityList());
   identityCmd
     .command("add")
@@ -82,7 +88,11 @@ export function createProgram(): Command {
   identityCmd.command("remove <id>").alias("rm").description("Remove an identity").action((id) => handleIdentityRemove(id));
 
   // Account Subcommands
-  const accountCmd = program.command("account").alias("acc").description("Manage authenticated provider accounts");
+  const accountCmd = program
+    .command("account")
+    .alias("acc")
+    .description("Manage authenticated provider accounts");
+  
   accountCmd.command("list").alias("ls").description("List logged-in provider accounts").action(() => handleAccountList());
   accountCmd.command("remove <id>").alias("rm").description("Remove an account and erase credentials").action((id) => handleAccountRemove(id));
 
@@ -101,11 +111,19 @@ export function createProgram(): Command {
     .action((prov, user) => handleAuthLogout(prov, user));
 
   // Provider Subcommands
-  const providerCmd = program.command("provider").description("Inspect supported Git providers");
+  const providerCmd = program
+    .command("provider")
+    .alias("prov")
+    .description("Inspect supported Git providers");
+  
   providerCmd.command("list").alias("ls").description("List supported Git providers").action(() => handleProviderList());
 
   // Rule Subcommands
-  const ruleCmd = program.command("rule").description("Manage directory routing rules");
+  const ruleCmd = program
+    .command("rule")
+    .alias("rules")
+    .description("Manage directory routing rules");
+  
   ruleCmd.command("list").alias("ls").description("List directory routing rules").action(() => handleRuleList());
   ruleCmd
     .command("add [path] [identityId]")
@@ -117,7 +135,11 @@ export function createProgram(): Command {
   ruleCmd.command("remove <idOrPath>").alias("rm").description("Remove a directory routing rule").action((target) => handleRuleRemove(target));
 
   // Remote Subcommands
-  const remoteCmd = program.command("remote").description("Manage repository remotes across providers");
+  const remoteCmd = program
+    .command("remote")
+    .alias("rem")
+    .description("Manage repository remotes across providers");
+  
   remoteCmd.command("list").alias("ls").description("List remotes for current repository").action(() => handleRemoteList());
   remoteCmd
     .command("add <name> <url>")
@@ -137,6 +159,7 @@ export function createProgram(): Command {
   // Doctor Diagnostics
   program
     .command("doctor")
+    .alias("doc")
     .description("Run comprehensive health and diagnostic checks")
     .action(() => handleDoctorCommand());
 
