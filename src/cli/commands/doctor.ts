@@ -23,7 +23,7 @@ export async function handleDoctorCommand(store: ConfigStore = defaultConfigStor
 
   // 1. Core Tooling
   const gitVersion = await git.getGitVersion();
-  const bunVersion = typeof Bun !== "undefined" ? Bun.version : "N/A";
+  const runtime = typeof Bun !== "undefined" ? `Bun ${Bun.version}` : `Node.js ${process.version}`;
   const platform = getPlatform();
 
   console.log(pc.bold("  1. Toolchain & Environment"));
@@ -33,8 +33,8 @@ export async function handleDoctorCommand(store: ConfigStore = defaultConfigStor
     console.log(`     ${pc.red("✖")} Git CLI:            ${pc.red("Not found on PATH")}`);
   }
 
-  console.log(`     ${pc.green("✔")} Bun Runtime:       ${pc.cyan(bunVersion)}`);
-  console.log(`     ${pc.green("✔")} Platform:          ${pc.cyan(platform)} (${process.arch})`);
+  console.log(`     ${pc.green("✔")} Runtime:            ${pc.cyan(runtime)}`);
+  console.log(`     ${pc.green("✔")} Platform:           ${pc.cyan(platform)} (${process.arch})`);
 
   // 2. Integration Blocks & Git Override
   console.log(pc.bold("\n  2. Git, SSH & Native Override Integrations"));

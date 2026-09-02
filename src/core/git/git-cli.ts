@@ -1,5 +1,6 @@
 import { GitCliError } from "@/utils/errors";
 import { parseRemoteUrl, type ParsedRemoteUrl } from "./url-parser";
+import { execProcess } from "@/utils/proc";
 
 export interface GitExecResult {
   stdout: string;
@@ -29,43 +30,25 @@ export class GitCli {
   async exec(args: string[], options: { cwd?: string; allowFailure?: boolean; env?: Record<string, string> } = {}): Promise<GitExecResult> {
     const targetCwd = options.cwd ?? this.cwd;
     try {
-      const proc = Bun.spawn(["git", ...args], {
+      const res = await execProcess("git", args, {
         cwd: targetCwd,
-        stdout: "pipe",
-        stderr: "pipe",
+        allowFailure: options.allowFailure,
         env: {
-          ...process.env,
           GITBRIDGE_OVERRIDE_BYPASS: "1",
           ...options.env,
         },
       });
 
-      const [stdout, stderr] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-      ]);
-
-      const exitCode = await proc.exited;
-
-      if (exitCode !== 0 && !options.allowFailure) {
-        throw new GitCliError(
-          stderr.trim() || stdout.trim() || `git ${args.join(" ")} failed`,
-          exitCode,
-          stderr.trim()
-        );
-      }
-
-      return {
-        stdout: stdout.trim(),
-        stderr: stderr.trim(),
-        exitCode,
-      };
+      return res;
     } catch (err: unknown) {
       if (err instanceof GitCliError) throw err;
+      const anyErr = err as any;
+      const exitCode = anyErr.exitCode ?? 1;
+      const stderr = anyErr.stderr || (err instanceof Error ? err.message : String(err));
       throw new GitCliError(
-        `Failed to run 'git ${args.join(" ")}': ${err instanceof Error ? err.message : String(err)}`,
-        1,
-        String(err)
+        `Failed to run 'git ${args.join(" ")}': ${stderr}`,
+        exitCode,
+        stderr
       );
     }
   }

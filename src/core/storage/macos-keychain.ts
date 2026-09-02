@@ -1,5 +1,6 @@
 import type { CredentialStore } from "./credential-store";
 import { CredentialStoreError } from "@/utils/errors";
+import { execProcess } from "@/utils/proc";
 
 export class MacOSKeychainCredentialStore implements CredentialStore {
   readonly name = "macOS Keychain";
@@ -7,12 +8,8 @@ export class MacOSKeychainCredentialStore implements CredentialStore {
   async isAvailable(): Promise<boolean> {
     if (process.platform !== "darwin") return false;
     try {
-      const proc = Bun.spawn(["which", "security"], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      const code = await proc.exited;
-      return code === 0;
+      const res = await execProcess("which", ["security"], { allowFailure: true });
+      return res.exitCode === 0;
     } catch {
       return false;
     }
@@ -23,19 +20,16 @@ export class MacOSKeychainCredentialStore implements CredentialStore {
       // First delete existing if any (-U updates or adds)
       await this.delete(service, account);
 
-      const proc = Bun.spawn(
-        ["security", "add-generic-password", "-a", account, "-s", service, "-w", secret, "-U"],
-        {
-          stdout: "pipe",
-          stderr: "pipe",
-        }
-      );
-
-      const code = await proc.exited;
-      if (code !== 0) {
-        const stderr = await new Response(proc.stderr).text();
-        throw new Error(stderr.trim() || `security add-generic-password exited with code ${code}`);
-      }
+      await execProcess("security", [
+        "add-generic-password",
+        "-a",
+        account,
+        "-s",
+        service,
+        "-w",
+        secret,
+        "-U",
+      ]);
     } catch (err: unknown) {
       throw new CredentialStoreError(
         `Failed to store credential in macOS Keychain: ${err instanceof Error ? err.message : String(err)}`
@@ -45,16 +39,14 @@ export class MacOSKeychainCredentialStore implements CredentialStore {
 
   async get(service: string, account: string): Promise<string | null> {
     try {
-      const proc = Bun.spawn(["security", "find-generic-password", "-a", account, "-s", service, "-w"], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
+      const res = await execProcess(
+        "security",
+        ["find-generic-password", "-a", account, "-s", service, "-w"],
+        { allowFailure: true }
+      );
 
-      const stdout = await new Response(proc.stdout).text();
-      const code = await proc.exited;
-
-      if (code === 0 && stdout.trim().length > 0) {
-        return stdout.trim();
+      if (res.exitCode === 0 && res.stdout.trim().length > 0) {
+        return res.stdout.trim();
       }
       return null;
     } catch {
@@ -64,11 +56,11 @@ export class MacOSKeychainCredentialStore implements CredentialStore {
 
   async delete(service: string, account: string): Promise<void> {
     try {
-      const proc = Bun.spawn(["security", "delete-generic-password", "-a", account, "-s", service], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      await proc.exited;
+      await execProcess(
+        "security",
+        ["delete-generic-password", "-a", account, "-s", service],
+        { allowFailure: true }
+      );
     } catch {
       // ignore
     }

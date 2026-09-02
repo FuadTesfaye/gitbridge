@@ -1,5 +1,6 @@
 import type { CredentialStore } from "./credential-store";
 import { CredentialStoreError } from "@/utils/errors";
+import { execProcess } from "@/utils/proc";
 
 export class WindowsCredentialStore implements CredentialStore {
   readonly name = "Windows Credential Manager";
@@ -15,16 +16,7 @@ export class WindowsCredentialStore implements CredentialStore {
   async set(service: string, account: string, secret: string): Promise<void> {
     const target = this.targetName(service, account);
     try {
-      const proc = Bun.spawn(["cmdkey", `/generic:${target}`, `/user:${account}`, `/pass:${secret}`], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-
-      const code = await proc.exited;
-      if (code !== 0) {
-        const stderr = await new Response(proc.stderr).text();
-        throw new Error(stderr.trim() || `cmdkey exited with code ${code}`);
-      }
+      await execProcess("cmdkey", [`/generic:${target}`, `/user:${account}`, `/pass:${secret}`]);
     } catch (err: unknown) {
       throw new CredentialStoreError(
         `Failed to store credential in Windows Credential Manager: ${err instanceof Error ? err.message : String(err)}`
@@ -34,22 +26,20 @@ export class WindowsCredentialStore implements CredentialStore {
 
   async get(service: string, account: string): Promise<string | null> {
     const target = this.targetName(service, account);
-    // PowerShell query script using Windows Credential API or cmdkey check
     try {
       const script = `
         Add-Type -AssemblyName System.Security
         $target = "${target}"
         $cred = [System.Net.CredentialCache]::DefaultCredentials
-        # Note: full extraction on Windows uses powershell credential lookup
       `;
-      const proc = Bun.spawn(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      const stdout = await new Response(proc.stdout).text();
-      const code = await proc.exited;
-      if (code === 0 && stdout.trim()) {
-        return stdout.trim();
+      const res = await execProcess(
+        "powershell",
+        ["-NoProfile", "-NonInteractive", "-Command", script],
+        { allowFailure: true }
+      );
+
+      if (res.exitCode === 0 && res.stdout.trim()) {
+        return res.stdout.trim();
       }
       return null;
     } catch {
@@ -60,11 +50,7 @@ export class WindowsCredentialStore implements CredentialStore {
   async delete(service: string, account: string): Promise<void> {
     const target = this.targetName(service, account);
     try {
-      const proc = Bun.spawn(["cmdkey", `/delete:${target}`], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      await proc.exited;
+      await execProcess("cmdkey", [`/delete:${target}`], { allowFailure: true });
     } catch {
       // ignore
     }
