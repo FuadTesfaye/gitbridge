@@ -26,6 +26,7 @@ import {
   handleIdeUnsyncCommand,
   handleIdeStatusCommand,
 } from "./commands/ide";
+import { configureProgramHelp } from "./ui/help";
 
 export function createProgram(name = "gitbridge"): Command {
   const program = new Command();
@@ -33,7 +34,9 @@ export function createProgram(name = "gitbridge"): Command {
   program
     .name(name)
     .description("Universal Git Identity & Multi-Account Management Layer")
-    .version("0.1.0");
+    .version("0.1.1");
+
+  configureProgramHelp(program, name);
 
   // Onboarding Wizard
   program
