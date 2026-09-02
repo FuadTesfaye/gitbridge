@@ -2,6 +2,7 @@ import pc from "picocolors";
 import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { GitConfigInjector } from "@/core/git/gitconfig-injector";
 import { SshInjector } from "@/core/ssh/ssh-injector";
+import { GitOverrideManager } from "@/core/git/override-manager";
 import { formatBadge, showBanner } from "../ui/banners";
 import { renderIdentitiesTable, renderAccountsTable, renderRulesTable } from "../ui/tables";
 
@@ -15,13 +16,16 @@ export async function handleStatusCommand(store: ConfigStore = defaultConfigStor
 
   const gitInjector = new GitConfigInjector(store);
   const sshInjector = new SshInjector(store);
+  const overrideManager = new GitOverrideManager(store);
 
   const gitInstalled = gitInjector.isInstalled();
   const sshInstalled = sshInjector.isInstalled();
+  const overrideStatus = overrideManager.getOverrideStatus();
 
   console.log(pc.bold("  STATUS OVERVIEW"));
   console.log("  ──────────────────────────────────────────────────");
   console.log(`  GitBridge Mode:         ${config.enabled ? formatBadge("ENABLED", "green") : formatBadge("DISABLED", "red")}`);
+  console.log(`  Native Git Override:    ${overrideStatus.enabled ? formatBadge("OVERRIDE ACTIVE", "green") : formatBadge("DISABLED", "yellow")}`);
   console.log(`  Git Extension Block:    ${gitInstalled ? pc.green("✔ Active in ~/.gitconfig") : pc.yellow("⚠ Not installed (run 'gitbridge enable')")}`);
   console.log(`  SSH Extension Block:    ${sshInstalled ? pc.green("✔ Active in ~/.ssh/config") : pc.gray("○ Not installed")}`);
   console.log(`  Default Identity:       ${config.defaultIdentityId ? pc.cyan(config.defaultIdentityId) : pc.gray("none")}`);

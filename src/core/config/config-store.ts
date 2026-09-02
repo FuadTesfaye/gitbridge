@@ -57,6 +57,7 @@ export class ConfigStore {
       this.paths.getGeneratedDir(),
       this.paths.getRulesDir(),
       this.paths.getBackupsDir(),
+      this.paths.getShimsDir(),
     ];
 
     for (const dir of dirs) {
@@ -106,6 +107,22 @@ export class ConfigStore {
 
   setEnabled(enabled: boolean): MainConfig {
     return this.saveConfig({ enabled });
+  }
+
+  setOverrideEnabled(overrideEnabled: boolean): MainConfig {
+    return this.updateSettings({ overrideEnabled });
+  }
+
+  isOverrideEnabled(): boolean {
+    return this.loadConfig().settings.overrideEnabled ?? false;
+  }
+
+  getRealGitPath(): string | null {
+    return this.loadConfig().settings.realGitPath || null;
+  }
+
+  setRealGitPath(realGitPath: string): MainConfig {
+    return this.updateSettings({ realGitPath });
   }
 
   // --- Identities ---

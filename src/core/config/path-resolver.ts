@@ -61,6 +61,14 @@ export class PathResolver {
     return path.join(this.baseDir, "backups");
   }
 
+  getShimsDir(): string {
+    return path.join(this.baseDir, "shims");
+  }
+
+  getGitShimPath(): string {
+    return path.join(this.getShimsDir(), process.platform === "win32" ? "git.cmd" : "git");
+  }
+
   getEncryptedVaultFile(): string {
     return path.join(this.baseDir, "vault.enc");
   }

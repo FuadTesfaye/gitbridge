@@ -33,7 +33,11 @@ export class GitCli {
         cwd: targetCwd,
         stdout: "pipe",
         stderr: "pipe",
-        env: { ...process.env, ...options.env },
+        env: {
+          ...process.env,
+          GITBRIDGE_OVERRIDE_BYPASS: "1",
+          ...options.env,
+        },
       });
 
       const [stdout, stderr] = await Promise.all([

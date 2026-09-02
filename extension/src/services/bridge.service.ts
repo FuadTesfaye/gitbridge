@@ -5,6 +5,7 @@ import { GitConfigGenerator } from "../../../src/core/git/config-generator";
 import { GitConfigInjector } from "../../../src/core/git/gitconfig-injector";
 import { SshConfigGenerator } from "../../../src/core/ssh/ssh-config-generator";
 import { SshInjector } from "../../../src/core/ssh/ssh-injector";
+import { GitOverrideManager } from "../../../src/core/git/override-manager";
 import { StoreFactory } from "../../../src/core/storage/store-factory";
 import { defaultProviderRegistry } from "../../../src/core/providers/provider-registry";
 import { SshKeyDetector } from "../../../src/core/ssh/ssh-key-detector";
@@ -16,6 +17,7 @@ export class BridgeService {
   private resolver: IdentityResolver;
   private gitInjector: GitConfigInjector;
   private sshInjector: SshInjector;
+  private overrideManager: GitOverrideManager;
   private gitGen: GitConfigGenerator;
   private sshGen: SshConfigGenerator;
   private guard: IdentityGuard;
@@ -25,6 +27,7 @@ export class BridgeService {
     this.resolver = new IdentityResolver(store);
     this.gitInjector = new GitConfigInjector(store);
     this.sshInjector = new SshInjector(store);
+    this.overrideManager = new GitOverrideManager(store);
     this.gitGen = new GitConfigGenerator(store);
     this.sshGen = new SshConfigGenerator(store);
     this.guard = new IdentityGuard(store);
@@ -215,17 +218,31 @@ export class BridgeService {
     return results.map((r, i) => (r.status === "fulfilled" ? r.value : { remote: remotes[i].name, success: false, error: "Push failed" }));
   }
 
+  enableOverride() {
+    return this.overrideManager.enable();
+  }
+
+  disableOverride() {
+    return this.overrideManager.disable();
+  }
+
+  getOverrideStatus() {
+    return this.overrideManager.getOverrideStatus();
+  }
+
   async runDiagnostics(): Promise<string> {
     const git = new GitCli();
     const gitVersion = await git.getGitVersion();
     const credStore = await StoreFactory.getStore(this.store.getPathResolver());
     const sshKeys = SshKeyDetector.listAvailableKeys();
     const providers = defaultProviderRegistry.list();
+    const overrideStatus = this.overrideManager.getOverrideStatus();
 
     let output = `GitBridge System Diagnostics\n`;
     output += `──────────────────────────────────────────────────\n`;
     output += `Git CLI Version:        ${gitVersion || "Not found"}\n`;
     output += `Credential Storage:     ${credStore.name}\n`;
+    output += `Native Git Override:    ${overrideStatus.enabled && overrideStatus.shimsInstalled ? "Active" : "Disabled"}\n`;
     output += `Git ~/.gitconfig:       ${this.gitInjector.isInstalled() ? "Active" : "Not enabled"}\n`;
     output += `SSH ~/.ssh/config:      ${this.sshInjector.isInstalled() ? "Active" : "Not enabled"}\n`;
     output += `Available SSH Keys:     ${sshKeys.map((k) => k.name).join(", ") || "None"}\n\n`;

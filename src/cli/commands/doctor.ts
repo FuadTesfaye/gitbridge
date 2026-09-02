@@ -4,6 +4,7 @@ import { GitCli } from "@/core/git/git-cli";
 import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { GitConfigInjector } from "@/core/git/gitconfig-injector";
 import { SshInjector } from "@/core/ssh/ssh-injector";
+import { GitOverrideManager } from "@/core/git/override-manager";
 import { SshKeyDetector } from "@/core/ssh/ssh-key-detector";
 import { StoreFactory } from "@/core/storage/store-factory";
 import { defaultProviderRegistry } from "@/core/providers/provider-registry";
@@ -16,6 +17,7 @@ export async function handleDoctorCommand(store: ConfigStore = defaultConfigStor
   const git = new GitCli();
   const gitInjector = new GitConfigInjector(store);
   const sshInjector = new SshInjector(store);
+  const overrideManager = new GitOverrideManager(store);
 
   // 1. Core Tooling
   const gitVersion = await git.getGitVersion();
@@ -32,10 +34,19 @@ export async function handleDoctorCommand(store: ConfigStore = defaultConfigStor
   console.log(`     ${pc.green("✔")} Bun Runtime:       ${pc.cyan(bunVersion)}`);
   console.log(`     ${pc.green("✔")} Platform:          ${pc.cyan(platform)} (${process.arch})`);
 
-  // 2. Integration Blocks
-  console.log(pc.bold("\n  2. Git & SSH Integrations"));
+  // 2. Integration Blocks & Git Override
+  console.log(pc.bold("\n  2. Git, SSH & Native Override Integrations"));
   const gitInstalled = gitInjector.isInstalled();
   const sshInstalled = sshInjector.isInstalled();
+  const overrideStatus = overrideManager.getOverrideStatus();
+
+  if (overrideStatus.enabled && overrideStatus.shimsInstalled) {
+    console.log(`     ${pc.green("✔")} Native Override:    ${pc.green("Active (git -> gitbridge proxy)")}`);
+  } else if (overrideStatus.enabled) {
+    console.log(`     ${pc.yellow("⚠")} Native Override:    ${pc.yellow("Enabled but shims missing (run 'gitbridge override enable')")}`);
+  } else {
+    console.log(`     ${pc.gray("○")} Native Override:    ${pc.gray("Disabled (run 'gitbridge override enable')")}`);
+  }
 
   if (gitInstalled) {
     console.log(`     ${pc.green("✔")} ~/.gitconfig:      ${pc.green("Managed block active")}`);

@@ -15,6 +15,12 @@ import { handleDoctorCommand } from "./commands/doctor";
 import { handleSetupCommand } from "./commands/setup";
 import { handleCredentialCommand } from "./commands/credential";
 import { handleHookCommand } from "./commands/hook";
+import {
+  handleOverrideEnableCommand,
+  handleOverrideDisableCommand,
+  handleOverrideStatusCommand,
+  handleGitProxyCommand,
+} from "./commands/override";
 
 export function createProgram(name = "gitbridge"): Command {
   const program = new Command();
@@ -53,6 +59,28 @@ export function createProgram(name = "gitbridge"): Command {
     .command("disable")
     .description("Disable GitBridge integration and safely restore original Git config")
     .action(() => handleDisableCommand());
+
+  // Native Git Command Override
+  const overrideCmd = program
+    .command("override")
+    .description("Manage native Git command override to route standard 'git' through GitBridge");
+
+  overrideCmd
+    .command("enable")
+    .description("Enable native Git command override across shells (Linux, macOS, Windows)")
+    .action(() => handleOverrideEnableCommand());
+
+  overrideCmd
+    .command("disable")
+    .description("Disable native Git command override and restore standard Git behavior")
+    .action(() => handleOverrideDisableCommand());
+
+  overrideCmd
+    .command("status")
+    .description("Check current status of native Git command override")
+    .action(() => handleOverrideStatusCommand());
+
+  overrideCmd.action(() => handleOverrideStatusCommand());
 
   // Switch Shortcut
   program
@@ -172,6 +200,16 @@ export function createProgram(name = "gitbridge"): Command {
   // Hook Subcommand (Invoked by Git hooks)
   const hookCmd = program.command("hook").description("Internal Git hook runner");
   hookCmd.command("pre-commit").description("Pre-commit identity validation").action(() => handleHookCommand("pre-commit"));
+
+  // Internal Git Proxy Runner (Invoked by ~/.gitbridge/shims/git)
+  program
+    .command("git-proxy [args...]", { hidden: true })
+    .allowUnknownOption(true)
+    .description("Internal GitBridge proxy runner for intercepted git commands")
+    .action((args) => {
+      const proxyArgs = Array.isArray(args) ? args : [];
+      return handleGitProxyCommand(proxyArgs);
+    });
 
   return program;
 }

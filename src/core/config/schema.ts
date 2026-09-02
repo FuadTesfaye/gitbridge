@@ -59,6 +59,8 @@ export const GitBridgeSettingsSchema = z.object({
   sshManagementEnabled: z.boolean().default(true),
   commitIdentitySafety: z.boolean().default(true),
   fallbackEncryptedStore: z.boolean().default(false),
+  overrideEnabled: z.boolean().default(false),
+  realGitPath: z.string().optional(),
 });
 export type GitBridgeSettings = z.infer<typeof GitBridgeSettingsSchema>;
 

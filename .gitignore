@@ -5,3 +5,4 @@ dist/
 .gitbridge/
 *.tgz
 *.vsix
+extension/gitbridge-vscode-*/
