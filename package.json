@@ -1,6 +1,6 @@
 {
   "name": "@fuad24/gitbridge",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Universal Git Identity & Multi-Account Management Layer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -47,7 +47,6 @@
   "homepage": "https://github.com/FuadTesfaye/gitbridge#readme",
   "dependencies": {
     "@clack/prompts": "^0.9.1",
-    "@fuad24/gitbridge": "^0.1.1",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
     "ora": "^8.2.0",
