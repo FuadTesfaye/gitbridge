@@ -8,7 +8,7 @@ export class TreeItem {
   public label?: string;
   public collapsibleState?: TreeItemCollapsibleState;
   public description?: string;
-  public tooltip?: string;
+  public tooltip?: string | MarkdownString;
   public iconPath?: unknown;
   public contextValue?: string;
   public command?: { command: string; title: string; arguments?: unknown[] };
@@ -20,7 +20,7 @@ export class TreeItem {
 }
 
 export class ThemeIcon {
-  constructor(public readonly id: string) {}
+  constructor(public readonly id: string, public readonly color?: ThemeColor) {}
 }
 
 export class ThemeColor {
@@ -34,6 +34,7 @@ export enum StatusBarAlignment {
 
 export class MarkdownString {
   public value = "";
+  public isTrusted = false;
   appendMarkdown(value: string) {
     this.value += value;
   }

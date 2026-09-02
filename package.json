@@ -47,6 +47,7 @@
   "homepage": "https://github.com/FuadTesfaye/gitbridge#readme",
   "dependencies": {
     "@clack/prompts": "^0.9.1",
+    "@fuad24/gitbridge": "^0.1.1",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
     "ora": "^8.2.0",

@@ -9,7 +9,7 @@ import { StoreFactory } from "../../../src/core/storage/store-factory";
 import { defaultProviderRegistry } from "../../../src/core/providers/provider-registry";
 import { SshKeyDetector } from "../../../src/core/ssh/ssh-key-detector";
 import { IdentityGuard } from "../../../src/core/safety/identity-guard";
-import type { GitIdentity, ProviderAccount, DirectoryRule, RepositoryProfile, GitProviderType } from "../../../src/core/config/schema";
+import type { GitIdentity, ProviderAccount, DirectoryRule, RepositoryProfile } from "../../../src/core/config/schema";
 
 export class BridgeService {
   private store: ConfigStore;
@@ -140,6 +140,58 @@ export class BridgeService {
 
   isSshInstalled(): boolean {
     return this.sshInjector.isInstalled();
+  }
+
+  async isSafetyHookInstalled(cwd?: string): Promise<boolean> {
+    const git = new GitCli(cwd || process.cwd());
+    const root = await git.getRepoRoot();
+    if (!root) return false;
+    return this.guard.isInstalled(root);
+  }
+
+  async installSafetyHook(cwd?: string): Promise<boolean> {
+    const git = new GitCli(cwd || process.cwd());
+    const root = await git.getRepoRoot();
+    if (!root) return false;
+    return this.guard.install(root);
+  }
+
+  async uninstallSafetyHook(cwd?: string): Promise<boolean> {
+    const git = new GitCli(cwd || process.cwd());
+    const root = await git.getRepoRoot();
+    if (!root) return false;
+    return this.guard.uninstall(root);
+  }
+
+  async fixEmailMismatch(cwd?: string): Promise<{ success: boolean; name?: string; email?: string; error?: string }> {
+    const targetDir = cwd || process.cwd();
+    const ctx = await this.resolveContext(targetDir);
+    if (!ctx.isGitRepo) {
+      return { success: false, error: "Not a git repository." };
+    }
+    if (!ctx.identity) {
+      return { success: false, error: "No matching identity found for this directory." };
+    }
+
+    const git = new GitCli(targetDir);
+    await git.setConfig("user.name", ctx.identity.name, "local");
+    await git.setConfig("user.email", ctx.identity.email, "local");
+    if (ctx.identity.signingKey) {
+      await git.setConfig("user.signingkey", ctx.identity.signingKey, "local");
+    }
+
+    const root = await git.getRepoRoot();
+    if (root) {
+      const existing = this.store.getRepository(root);
+      this.store.saveRepositoryProfile({
+        path: root,
+        identityId: ctx.identity.id,
+        remotes: existing?.remotes || [],
+        safetyHookInstalled: existing?.safetyHookInstalled || false,
+      });
+    }
+
+    return { success: true, name: ctx.identity.name, email: ctx.identity.email };
   }
 
   async pushAll(cwd?: string): Promise<{ remote: string; success: boolean; error?: string }[]> {

@@ -4,6 +4,11 @@
   "description": "Universal Git Identity & Multi-Account Management Layer for VS Code, Cursor, and Antigravity IDE",
   "version": "0.1.0",
   "publisher": "fuadtesfaye",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FuadTesfaye/gitbridge"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -55,14 +60,50 @@
           "id": "gitbridge.rules",
           "name": "Directory Rules"
         }
+      ],
+      "scm": [
+        {
+          "id": "gitbridge.scm.context",
+          "name": "GitBridge Identity"
+        }
       ]
     },
     "commands": [
+      {
+        "command": "gitbridge.showStatusBarMenu",
+        "title": "GitBridge: Identity & Context Quick Menu",
+        "category": "GitBridge",
+        "icon": "$(person)"
+      },
       {
         "command": "gitbridge.switchIdentity",
         "title": "GitBridge: Switch Git Identity",
         "category": "GitBridge",
         "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "gitbridge.setDefaultIdentity",
+        "title": "GitBridge: Set Default Identity",
+        "category": "GitBridge",
+        "icon": "$(star)"
+      },
+      {
+        "command": "gitbridge.removeIdentity",
+        "title": "GitBridge: Delete Identity",
+        "category": "GitBridge",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "gitbridge.fixMismatch",
+        "title": "GitBridge: Fix Repository Email Mismatch",
+        "category": "GitBridge",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "gitbridge.toggleSafetyHook",
+        "title": "GitBridge: Toggle Pre-Commit Safety Guard",
+        "category": "GitBridge",
+        "icon": "$(shield)"
       },
       {
         "command": "gitbridge.initRepo",
@@ -83,6 +124,18 @@
         "icon": "$(add)"
       },
       {
+        "command": "gitbridge.removeRule",
+        "title": "GitBridge: Delete Directory Rule",
+        "category": "GitBridge",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "gitbridge.openDirectoryRule",
+        "title": "GitBridge: Open Rule Directory",
+        "category": "GitBridge",
+        "icon": "$(folder)"
+      },
+      {
         "command": "gitbridge.authLogin",
         "title": "GitBridge: Connect Git Provider Account",
         "category": "GitBridge",
@@ -91,7 +144,8 @@
       {
         "command": "gitbridge.authLogout",
         "title": "GitBridge: Disconnect Account",
-        "category": "GitBridge"
+        "category": "GitBridge",
+        "icon": "$(sign-out)"
       },
       {
         "command": "gitbridge.pushAll",
@@ -122,6 +176,23 @@
         "icon": "$(refresh)"
       }
     ],
+    "keybindings": [
+      {
+        "command": "gitbridge.showStatusBarMenu",
+        "key": "ctrl+alt+g m",
+        "mac": "cmd+alt+g m"
+      },
+      {
+        "command": "gitbridge.switchIdentity",
+        "key": "ctrl+alt+g s",
+        "mac": "cmd+alt+g s"
+      },
+      {
+        "command": "gitbridge.doctor",
+        "key": "ctrl+alt+g d",
+        "mac": "cmd+alt+g d"
+      }
+    ],
     "menus": {
       "view/title": [
         {
@@ -143,12 +214,52 @@
           "command": "gitbridge.addRule",
           "when": "view == gitbridge.rules",
           "group": "navigation@2"
+        },
+        {
+          "command": "gitbridge.doctor",
+          "when": "view =~ /^gitbridge\\./",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
         {
           "command": "gitbridge.switchIdentity",
+          "when": "viewItem == gitbridge-identity || viewItem == gitbridge-context-identity",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitbridge.setDefaultIdentity",
           "when": "viewItem == gitbridge-identity",
+          "group": "inline@2"
+        },
+        {
+          "command": "gitbridge.removeIdentity",
+          "when": "viewItem == gitbridge-identity",
+          "group": "inline@3"
+        },
+        {
+          "command": "gitbridge.fixMismatch",
+          "when": "viewItem == gitbridge-context-mismatch",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitbridge.toggleSafetyHook",
+          "when": "viewItem == gitbridge-context-safety-hook",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitbridge.openDirectoryRule",
+          "when": "viewItem == gitbridge-rule",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitbridge.removeRule",
+          "when": "viewItem == gitbridge-rule",
+          "group": "inline@2"
+        },
+        {
+          "command": "gitbridge.authLogout",
+          "when": "viewItem == gitbridge-account",
           "group": "inline@1"
         },
         {

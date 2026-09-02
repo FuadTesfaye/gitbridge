@@ -4,15 +4,26 @@ import {
   IdentityTreeItem,
   AccountTreeItem,
   RuleTreeItem,
+  EmptyStateItem,
 } from "../../src/providers/tree-items";
 import type { GitIdentity, ProviderAccount, DirectoryRule } from "../../../src/core/config/schema";
 
 describe("Extension Tree Items", () => {
   it("renders ContextPropertyItem correctly", () => {
-    const item = new ContextPropertyItem("Repository", "my-project", "repo", "Project Root");
+    const item = new ContextPropertyItem("Repository", "my-project", "repo", {
+      description: "Project Root",
+      tooltip: "Full Path: /workspace/my-project",
+    });
     expect(item.label).toBe("Repository");
     expect(item.description).toBe("my-project");
-    expect(item.tooltip).toContain("Project Root");
+    expect(item.tooltip).toBe("Full Path: /workspace/my-project");
+  });
+
+  it("renders EmptyStateItem with command", () => {
+    const item = new EmptyStateItem("No identities", "Add (+)", "gitbridge.addIdentity");
+    expect(item.label).toBe("No identities");
+    expect(item.description).toBe("Add (+)");
+    expect(item.command?.command).toBe("gitbridge.addIdentity");
   });
 
   it("renders IdentityTreeItem with active badge and switch command", () => {
@@ -34,30 +45,33 @@ describe("Extension Tree Items", () => {
     expect(inactiveItem.description).toBe("work@company.com");
   });
 
-  it("renders AccountTreeItem with provider icons", () => {
+  it("renders AccountTreeItem with provider icons and host alias tooltip", () => {
     const ghAccount: ProviderAccount = {
       id: "github_fuad",
       providerId: "github",
       host: "github.com",
       username: "FuadTesfaye",
       authType: "oauth",
+      sshKeyPath: "~/.ssh/id_ed25519",
       createdAt: new Date().toISOString(),
     };
 
     const item = new AccountTreeItem(ghAccount);
     expect(item.label).toBe("@FuadTesfaye");
     expect(item.description).toBe("GITHUB (github.com)");
+    expect(item.tooltip).toContain("SSH Host Alias: github.com-github_fuad");
   });
 
   it("renders RuleTreeItem with directory mapping", () => {
     const rule: DirectoryRule = {
       id: "rule_work",
-      path: "~/Projects/work",
+      path: "/home/fuaf24/Personal/Gitbridge",
       identityId: "work",
     };
 
     const item = new RuleTreeItem(rule);
-    expect(item.label).toBe("~/Projects/work");
+    expect(item.label).toBe("~/Personal/Gitbridge");
     expect(item.description).toBe("➔ work");
+    expect(item.command?.command).toBe("gitbridge.openDirectoryRule");
   });
 });

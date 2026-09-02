@@ -11,7 +11,7 @@ export class StatusBarController implements vscode.Disposable {
     private contextService: GitContextService = gitContextService
   ) {
     this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    this.item.command = COMMANDS.SWITCH_IDENTITY;
+    this.item.command = COMMANDS.SHOW_STATUS_BAR_MENU;
   }
 
   async update(): Promise<void> {
@@ -29,8 +29,9 @@ export class StatusBarController implements vscode.Disposable {
 
     if (!ctx.identity) {
       this.item.text = "$(person) GitBridge: No Identity";
-      this.item.tooltip = "Click to configure or switch GitBridge identity";
+      this.item.tooltip = "Click to configure or switch Git identity";
       this.item.backgroundColor = undefined;
+      this.item.color = undefined;
       this.item.show();
       return;
     }
@@ -44,31 +45,35 @@ export class StatusBarController implements vscode.Disposable {
       let icon = "$(organization)";
       if (ctx.account.providerId === "github") icon = "$(github)";
       else if (ctx.account.providerId === "gitlab") icon = "$(git-merge)";
+      else if (ctx.account.providerId === "bitbucket") icon = "$(repo-forked)";
       text += ` ${icon} @${ctx.account.username}`;
     }
 
     if (ctx.isMismatched) {
-      text = `$(alert) ${text} [Mismatch]`;
+      text = `$(warning) ${text} (Mismatch!)`;
       this.item.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+      this.item.color = new vscode.ThemeColor("statusBarItem.warningForeground");
     } else {
       this.item.backgroundColor = undefined;
+      this.item.color = undefined;
     }
 
     const tooltip = new vscode.MarkdownString();
+    tooltip.isTrusted = true;
     tooltip.appendMarkdown(`### GitBridge Context\n\n`);
     tooltip.appendMarkdown(`- **Active Identity**: \`${ctx.identity.name} <${ctx.identity.email}>\`\n`);
     tooltip.appendMarkdown(`- **Identity ID**: \`${ctx.identity.id}\`\n`);
-    tooltip.appendMarkdown(`- **Resolution Source**: \`${ctx.source.replace("_", " ").toUpperCase()}\`\n`);
+    tooltip.appendMarkdown(`- **Routing Source**: \`${ctx.source.replace("_", " ").toUpperCase()}\`\n`);
     if (ctx.account) {
       tooltip.appendMarkdown(`- **Provider Account**: \`@${ctx.account.username}\` (${ctx.account.providerId})\n`);
     }
     if (ctx.isGitRepo) {
       tooltip.appendMarkdown(`- **Local Git Email**: \`${ctx.localGitEmail || "Not set"}\`\n`);
       if (ctx.isMismatched) {
-        tooltip.appendMarkdown(`\n> ⚠️ **Warning**: Local \`.git/config\` email does not match the active GitBridge rule!\n`);
+        tooltip.appendMarkdown(`\n> ⚠️ **Warning**: Local repo email does not match the active directory rule!\n> Click to fix or switch identity.\n`);
       }
     }
-    tooltip.appendMarkdown(`\n---\n*Click to switch identity or configure GitBridge*`);
+    tooltip.appendMarkdown(`\n---\n*Click to open GitBridge quick menu*`);
 
     this.item.text = text;
     this.item.tooltip = tooltip;

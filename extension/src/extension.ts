@@ -19,9 +19,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const accountsProvider = new AccountsTreeDataProvider(bridgeService);
   const rulesProvider = new RulesTreeDataProvider(bridgeService);
 
-  // Register Tree Views
+  // Register Tree Views (Activity Bar and Source Control Panel)
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(VIEWS.CONTEXT, contextProvider),
+    vscode.window.registerTreeDataProvider(VIEWS.SCM_CONTEXT, contextProvider),
     vscode.window.registerTreeDataProvider(VIEWS.IDENTITIES, identitiesProvider),
     vscode.window.registerTreeDataProvider(VIEWS.ACCOUNTS, accountsProvider),
     vscode.window.registerTreeDataProvider(VIEWS.RULES, rulesProvider)

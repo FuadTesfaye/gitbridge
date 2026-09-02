@@ -3,6 +3,7 @@ import { BridgeService, bridgeService } from "../services/bridge.service";
 import { GitContextService, gitContextService } from "../services/git-context.service";
 import { NotificationService, notificationService } from "../services/notification.service";
 import { COMMANDS } from "../constants";
+import type { DirectoryRule } from "../../../src/core/config/schema";
 
 export class CommandsController implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
@@ -19,63 +20,112 @@ export class CommandsController implements vscode.Disposable {
   }
 
   private registerCommands(): void {
-    // 1. Switch Identity
+    // 1. Show Status Bar Menu
+    this.disposables.push(
+      vscode.commands.registerCommand(COMMANDS.SHOW_STATUS_BAR_MENU, async () => {
+        await this.handleShowStatusBarMenu();
+      })
+    );
+
+    // 2. Switch Identity
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.SWITCH_IDENTITY, async (targetId?: string) => {
         await this.handleSwitchIdentity(targetId);
       })
     );
 
-    // 2. Add Identity
+    // 3. Set Default Identity
+    this.disposables.push(
+      vscode.commands.registerCommand(COMMANDS.SET_DEFAULT_IDENTITY, async (targetId?: string) => {
+        await this.handleSetDefaultIdentity(targetId);
+      })
+    );
+
+    // 4. Remove Identity
+    this.disposables.push(
+      vscode.commands.registerCommand(COMMANDS.REMOVE_IDENTITY, async (targetId?: string) => {
+        await this.handleRemoveIdentity(targetId);
+      })
+    );
+
+    // 5. Add Identity
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.ADD_IDENTITY, async () => {
         await this.handleAddIdentity();
       })
     );
 
-    // 3. Add Rule
+    // 6. Add Rule
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.ADD_RULE, async () => {
         await this.handleAddRule();
       })
     );
 
-    // 4. Init Repo
+    // 7. Remove Rule
+    this.disposables.push(
+      vscode.commands.registerCommand(COMMANDS.REMOVE_RULE, async (rule?: DirectoryRule | string) => {
+        await this.handleRemoveRule(rule);
+      })
+    );
+
+    // 8. Open Directory Rule
+    this.disposables.push(
+      vscode.commands.registerCommand(COMMANDS.OPEN_DIRECTORY_RULE, async (rule?: DirectoryRule) => {
+        await this.handleOpenDirectoryRule(rule);
+      })
+    );
+
+    // 9. Fix Email Mismatch
+    this.disposables.push(
+      vscode.commands.registerCommand(COMMANDS.FIX_MISMATCH, async () => {
+        await this.handleFixMismatch();
+      })
+    );
+
+    // 10. Toggle Pre-Commit Safety Hook
+    this.disposables.push(
+      vscode.commands.registerCommand(COMMANDS.TOGGLE_SAFETY_HOOK, async () => {
+        await this.handleToggleSafetyHook();
+      })
+    );
+
+    // 11. Init Repo
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.INIT_REPO, async () => {
         await this.handleInitRepo();
       })
     );
 
-    // 5. Auth Login
+    // 12. Auth Login
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.AUTH_LOGIN, async () => {
         await this.handleAuthLogin();
       })
     );
 
-    // 6. Auth Logout
+    // 13. Auth Logout
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.AUTH_LOGOUT, async () => {
         await this.handleAuthLogout();
       })
     );
 
-    // 7. Push All Remotes
+    // 14. Push All Remotes
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.PUSH_ALL, async () => {
         await this.handlePushAll();
       })
     );
 
-    // 8. Doctor Diagnostics
+    // 15. Doctor Diagnostics
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.DOCTOR, async () => {
         await this.handleDoctor();
       })
     );
 
-    // 9. Enable / Disable
+    // 16. Enable / Disable
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.ENABLE, async () => {
         await this.bridge.enable();
@@ -92,7 +142,7 @@ export class CommandsController implements vscode.Disposable {
       })
     );
 
-    // 10. Refresh
+    // 17. Refresh
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.REFRESH, () => {
         this.triggerRefresh();
@@ -103,6 +153,83 @@ export class CommandsController implements vscode.Disposable {
   private triggerRefresh(): void {
     if (this.onRefreshNeeded) {
       this.onRefreshNeeded();
+    }
+  }
+
+  private async handleShowStatusBarMenu(): Promise<void> {
+    const cwd = this.contextService.getActiveWorkspaceFolder();
+    const ctx = await this.bridge.resolveContext(cwd);
+    const identities = this.bridge.loadIdentities();
+    const isHookActive = cwd ? await this.bridge.isSafetyHookInstalled(cwd) : false;
+
+    type MenuItem = vscode.QuickPickItem & { action: () => Promise<void> };
+    const items: MenuItem[] = [];
+
+    // 1. Mismatch Fix (Top priority if alert is active)
+    if (ctx.isMismatched && ctx.identity) {
+      items.push({
+        label: `$(tools) Fix Email Mismatch`,
+        description: `Set local repo to ${ctx.identity.email}`,
+        detail: `Current local email '${ctx.localGitEmail}' does not match rule '${ctx.identity.email}'`,
+        action: async () => this.handleFixMismatch(),
+      });
+    }
+
+    // 2. Identities Switcher Section
+    for (const id of identities) {
+      const isActive = ctx.identity?.id === id.id;
+      items.push({
+        label: `${isActive ? "$(check)" : "$(person)"} Switch to ${id.name}`,
+        description: id.email,
+        detail: isActive ? "Active Identity in Current Repository" : id.isDefault ? "Global Default Identity" : undefined,
+        action: async () => {
+          await this.bridge.setIdentity(id.id, cwd, false);
+          this.notifications.showInfo(`Switched repository identity to '${id.name}' (${id.email}).`);
+          this.triggerRefresh();
+        },
+      });
+    }
+
+    // 3. Quick Action Items
+    items.push({
+      label: "$(add) Add New Git Identity...",
+      description: "Create a new name/email identity",
+      action: async () => this.handleAddIdentity(),
+    });
+
+    items.push({
+      label: "$(folder-active) Map Current Folder (Add Rule)...",
+      description: cwd ? `Create directory rule for ${cwd}` : "Map a workspace folder",
+      action: async () => this.handleAddRule(),
+    });
+
+    if (ctx.isGitRepo) {
+      items.push({
+        label: `${isHookActive ? "$(shield)" : "$(shield-x)"} ${isHookActive ? "Uninstall" : "Install"} Pre-Commit Safety Guard`,
+        description: isHookActive ? "Currently protecting commits" : "Protect repository against email mismatches",
+        action: async () => this.handleToggleSafetyHook(),
+      });
+    }
+
+    items.push({
+      label: "$(pulse) Run Diagnostics (Doctor)",
+      description: "Inspect Git, Keyring, SSH Keys & Provider health",
+      action: async () => this.handleDoctor(),
+    });
+
+    items.push({
+      label: "$(refresh) Refresh GitBridge Context",
+      description: "Reload all identity and git state",
+      action: async () => this.triggerRefresh(),
+    });
+
+    const picked = await vscode.window.showQuickPick(items, {
+      placeHolder: ctx.identity ? `Active: ${ctx.identity.name} <${ctx.identity.email}>` : "Select a GitBridge action",
+      title: "GitBridge: Identity & Context Quick Menu",
+    });
+
+    if (picked) {
+      await picked.action();
     }
   }
 
@@ -153,6 +280,97 @@ export class CommandsController implements vscode.Disposable {
     this.triggerRefresh();
   }
 
+  private async handleSetDefaultIdentity(targetId?: string): Promise<void> {
+    const identities = this.bridge.loadIdentities();
+    if (identities.length === 0) {
+      this.notifications.showWarning("No identities configured.");
+      return;
+    }
+
+    let selectedId = targetId;
+    if (!selectedId) {
+      const picked = await vscode.window.showQuickPick(
+        identities.map((id) => ({
+          label: id.name,
+          description: id.email,
+          identityId: id.id,
+        })),
+        { placeHolder: "Select identity to set as global default", title: "GitBridge: Set Default Identity" }
+      );
+      if (!picked) return;
+      selectedId = picked.identityId;
+    }
+
+    await this.bridge.setIdentity(selectedId, undefined, true);
+    this.notifications.showInfo(`Identity '${selectedId}' is now the global default.`);
+    this.triggerRefresh();
+  }
+
+  private async handleRemoveIdentity(targetId?: string): Promise<void> {
+    const identities = this.bridge.loadIdentities();
+    if (identities.length === 0) return;
+
+    let selectedId = targetId;
+    if (!selectedId) {
+      const picked = await vscode.window.showQuickPick(
+        identities.map((id) => ({
+          label: id.name,
+          description: id.email,
+          identityId: id.id,
+        })),
+        { placeHolder: "Select identity to remove" }
+      );
+      if (!picked) return;
+      selectedId = picked.identityId;
+    }
+
+    const confirm = await vscode.window.showWarningMessage(
+      `Are you sure you want to remove identity '${selectedId}'?`,
+      { modal: true },
+      "Delete Identity"
+    );
+
+    if (confirm === "Delete Identity") {
+      await this.bridge.removeIdentity(selectedId);
+      this.notifications.showInfo(`Removed identity '${selectedId}'.`);
+      this.triggerRefresh();
+    }
+  }
+
+  private async handleFixMismatch(): Promise<void> {
+    const cwd = this.contextService.getActiveWorkspaceFolder();
+    if (!cwd) {
+      this.notifications.showWarning("Open a Git workspace first.");
+      return;
+    }
+
+    const res = await this.bridge.fixEmailMismatch(cwd);
+    if (res.success) {
+      this.notifications.showInfo(`Updated repository author to '${res.name} <${res.email}>'.`);
+    } else {
+      this.notifications.showError(res.error || "Failed to fix mismatch.");
+    }
+    this.triggerRefresh();
+  }
+
+  private async handleToggleSafetyHook(): Promise<void> {
+    const cwd = this.contextService.getActiveWorkspaceFolder();
+    if (!cwd) {
+      this.notifications.showWarning("Open a Git repository first.");
+      return;
+    }
+
+    const isInstalled = await this.bridge.isSafetyHookInstalled(cwd);
+    if (isInstalled) {
+      await this.bridge.uninstallSafetyHook(cwd);
+      this.notifications.showInfo("Pre-commit safety guard uninstalled.");
+    } else {
+      await this.bridge.installSafetyHook(cwd);
+      this.notifications.showInfo("Pre-commit safety guard installed! Your repository is now protected against email mismatches.");
+    }
+    this.triggerRefresh();
+  }
+
   private async handleAddIdentity(): Promise<void> {
     const id = await this.notifications.promptInput({
       prompt: "Enter Identity ID (e.g. personal, work, client-x):",
@@ -195,12 +413,28 @@ export class CommandsController implements vscode.Disposable {
     }
 
     const cwd = this.contextService.getActiveWorkspaceFolder();
-    const dirPath = await this.notifications.promptInput({
-      prompt: "Enter directory path to map:",
-      value: cwd || "",
-      validateInput: (val) => (!val.trim() ? "Directory path is required." : undefined),
+
+    // Offer native folder picker dialog
+    const folderUris = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: false,
+      defaultUri: cwd ? vscode.Uri.file(cwd) : undefined,
+      openLabel: "Select Directory for Rule",
+      title: "GitBridge: Select Workspace Folder",
     });
-    if (!dirPath) return;
+
+    let selectedPath = folderUris && folderUris.length > 0 ? folderUris[0].fsPath : undefined;
+
+    if (!selectedPath) {
+      selectedPath = await this.notifications.promptInput({
+        prompt: "Enter directory path to map:",
+        value: cwd || "",
+        validateInput: (val) => (!val.trim() ? "Directory path is required." : undefined),
+      });
+    }
+
+    if (!selectedPath) return;
 
     const identityItems = identities.map((id) => ({
       label: id.name,
@@ -214,15 +448,55 @@ export class CommandsController implements vscode.Disposable {
     });
     if (!picked) return;
 
-    const ruleId = `rule_${dirPath.split(/[/\\]/).filter(Boolean).pop() || "custom"}`;
+    const cleanFolder = selectedPath.split(/[/\\]/).filter(Boolean).pop() || "custom";
+    const ruleId = `rule_${cleanFolder}`;
     await this.bridge.addRule({
       id: ruleId,
-      path: dirPath,
+      path: selectedPath,
       identityId: picked.identityId,
     });
 
-    this.notifications.showInfo(`Directory rule created for '${dirPath}'.`);
+    this.notifications.showInfo(`Directory rule created for '${selectedPath}'.`);
     this.triggerRefresh();
+  }
+
+  private async handleRemoveRule(ruleOrId?: DirectoryRule | string): Promise<void> {
+    let ruleId: string | undefined;
+
+    if (typeof ruleOrId === "string") {
+      ruleId = ruleOrId;
+    } else if (ruleOrId && "id" in ruleOrId) {
+      ruleId = ruleOrId.id;
+    } else {
+      const rules = this.bridge.loadRules();
+      if (rules.length === 0) {
+        this.notifications.showInfo("No directory rules configured.");
+        return;
+      }
+
+      const picked = await vscode.window.showQuickPick(
+        rules.map((r) => ({
+          label: r.path,
+          description: `➔ ${r.identityId}`,
+          ruleId: r.id,
+        })),
+        { placeHolder: "Select directory rule to delete" }
+      );
+      if (!picked) return;
+      ruleId = picked.ruleId;
+    }
+
+    if (ruleId) {
+      await this.bridge.removeRule(ruleId);
+      this.notifications.showInfo("Directory rule deleted.");
+      this.triggerRefresh();
+    }
+  }
+
+  private async handleOpenDirectoryRule(rule?: DirectoryRule): Promise<void> {
+    if (!rule || !rule.path) return;
+    const uri = vscode.Uri.file(rule.path);
+    await vscode.commands.executeCommand("vscode.openFolder", uri, { forceNewWindow: false });
   }
 
   private async handleInitRepo(): Promise<void> {
@@ -273,7 +547,6 @@ export class CommandsController implements vscode.Disposable {
 
     try {
       this.notifications.showInfo(`Connecting ${provider.label}...`);
-      // Use terminal or direct command bridge
       const terminal = vscode.window.createTerminal("GitBridge Auth");
       terminal.show();
       terminal.sendText(`gitbridge auth login ${provider.value} --token "${token}"`);
