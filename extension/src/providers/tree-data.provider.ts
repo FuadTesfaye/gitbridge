@@ -170,6 +170,60 @@ export class ContextTreeDataProvider implements vscode.TreeDataProvider<GitBridg
       }
     }
 
+    // Native Git Override Status
+    const overrideStatus = this.bridge.getOverrideStatus();
+    const isOverrideActive = overrideStatus.enabled && overrideStatus.shimsInstalled;
+    vscode.commands.executeCommand("setContext", CONTEXT_KEYS.OVERRIDE_ENABLED, isOverrideActive);
+
+    items.push(
+      new ContextPropertyItem(
+        "Native Override",
+        isOverrideActive ? "Active (git -> gitbridge)" : "Disabled",
+        isOverrideActive ? "zap" : "circle-slash",
+        {
+          description: isOverrideActive ? "Proxying CLI" : "Click to enable",
+          tooltip: isOverrideActive
+            ? "Native Git Command Override is active in your terminal and IDE.\nClick to toggle or disable."
+            : "Native Git Command Override is disabled.\nClick to enable universal interception.",
+          contextValue: "gitbridge-context-override",
+          color: isOverrideActive
+            ? new vscode.ThemeColor("terminal.ansiGreen")
+            : new vscode.ThemeColor("terminal.ansiYellow"),
+          command: {
+            command: COMMANDS.TOGGLE_OVERRIDE,
+            title: "Toggle Override",
+          },
+        }
+      )
+    );
+
+    // IDE Integration Status
+    const ideTargets = this.bridge.getIdeStatus();
+    const isIdeSynced = ideTargets.some((t) => t.synced);
+    vscode.commands.executeCommand("setContext", CONTEXT_KEYS.IDE_SYNCED, isIdeSynced);
+
+    items.push(
+      new ContextPropertyItem(
+        "IDE Integration",
+        isIdeSynced ? "Synced (git.path linked)" : "Not Synced",
+        isIdeSynced ? "pass" : "sync",
+        {
+          description: isIdeSynced ? "SCM & Terminal linked" : "Click to sync",
+          tooltip: isIdeSynced
+            ? "VS Code git.path and terminal environment are linked to GitBridge.\nClick to resync."
+            : "IDE settings are not yet linked to GitBridge shims.\nClick to synchronize automatically.",
+          contextValue: "gitbridge-context-ide",
+          color: isIdeSynced
+            ? new vscode.ThemeColor("terminal.ansiGreen")
+            : new vscode.ThemeColor("terminal.ansiYellow"),
+          command: {
+            command: COMMANDS.SYNC_IDE,
+            title: "Sync IDE",
+          },
+        }
+      )
+    );
+
     return items;
   }
 }

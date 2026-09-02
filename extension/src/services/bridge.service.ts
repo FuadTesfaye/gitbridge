@@ -6,6 +6,7 @@ import { GitConfigInjector } from "../../../src/core/git/gitconfig-injector";
 import { SshConfigGenerator } from "../../../src/core/ssh/ssh-config-generator";
 import { SshInjector } from "../../../src/core/ssh/ssh-injector";
 import { GitOverrideManager } from "../../../src/core/git/override-manager";
+import { IdeSyncManager } from "../../../src/core/ide/ide-sync-manager";
 import { StoreFactory } from "../../../src/core/storage/store-factory";
 import { defaultProviderRegistry } from "../../../src/core/providers/provider-registry";
 import { SshKeyDetector } from "../../../src/core/ssh/ssh-key-detector";
@@ -18,6 +19,7 @@ export class BridgeService {
   private gitInjector: GitConfigInjector;
   private sshInjector: SshInjector;
   private overrideManager: GitOverrideManager;
+  private ideManager: IdeSyncManager;
   private gitGen: GitConfigGenerator;
   private sshGen: SshConfigGenerator;
   private guard: IdentityGuard;
@@ -28,6 +30,7 @@ export class BridgeService {
     this.gitInjector = new GitConfigInjector(store);
     this.sshInjector = new SshInjector(store);
     this.overrideManager = new GitOverrideManager(store);
+    this.ideManager = new IdeSyncManager(store);
     this.gitGen = new GitConfigGenerator(store);
     this.sshGen = new SshConfigGenerator(store);
     this.guard = new IdentityGuard(store);
@@ -218,6 +221,19 @@ export class BridgeService {
     return results.map((r, i) => (r.status === "fulfilled" ? r.value : { remote: remotes[i].name, success: false, error: "Push failed" }));
   }
 
+  enableGitBridge() {
+    this.store.setEnabled(true);
+    const gitRes = this.gitInjector.inject();
+    const sshRes = this.sshInjector.inject();
+    return { gitRes, sshRes };
+  }
+
+  disableGitBridge() {
+    this.store.setEnabled(false);
+    this.gitInjector.remove();
+    this.sshInjector.remove();
+  }
+
   enableOverride() {
     return this.overrideManager.enable();
   }
@@ -228,6 +244,18 @@ export class BridgeService {
 
   getOverrideStatus() {
     return this.overrideManager.getOverrideStatus();
+  }
+
+  syncIde() {
+    return this.ideManager.syncAll();
+  }
+
+  unsyncIde() {
+    return this.ideManager.unsyncAll();
+  }
+
+  getIdeStatus() {
+    return this.ideManager.getIdeStatus();
   }
 
   async runDiagnostics(): Promise<string> {

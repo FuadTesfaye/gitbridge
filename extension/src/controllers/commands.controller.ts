@@ -125,20 +125,28 @@ export class CommandsController implements vscode.Disposable {
       })
     );
 
-    // 16. Enable / Disable
+    // 16. Enable / Disable Integration
     this.disposables.push(
       vscode.commands.registerCommand(COMMANDS.ENABLE, async () => {
-        await this.bridge.enable();
-        this.notifications.showInfo("GitBridge enabled in ~/.gitconfig and ~/.ssh/config.");
-        this.triggerRefresh();
-      })
-    );
-
-    this.disposables.push(
+        await this.handleEnable();
+      }),
       vscode.commands.registerCommand(COMMANDS.DISABLE, async () => {
-        await this.bridge.disable();
-        this.notifications.showWarning("GitBridge integration disabled. Restored original Git config.");
-        this.triggerRefresh();
+        await this.handleDisable();
+      }),
+      vscode.commands.registerCommand(COMMANDS.ENABLE_OVERRIDE, async () => {
+        await this.handleEnableOverride();
+      }),
+      vscode.commands.registerCommand(COMMANDS.DISABLE_OVERRIDE, async () => {
+        await this.handleDisableOverride();
+      }),
+      vscode.commands.registerCommand(COMMANDS.TOGGLE_OVERRIDE, async () => {
+        await this.handleToggleOverride();
+      }),
+      vscode.commands.registerCommand(COMMANDS.SYNC_IDE, async () => {
+        await this.handleSyncIde();
+      }),
+      vscode.commands.registerCommand(COMMANDS.UNSYNC_IDE, async () => {
+        await this.handleUnsyncIde();
       })
     );
 
@@ -156,11 +164,71 @@ export class CommandsController implements vscode.Disposable {
     }
   }
 
+  private async handleEnable(): Promise<void> {
+    this.bridge.enableGitBridge();
+    const config = vscode.workspace.getConfiguration("gitbridge");
+    if (config.get<boolean>("ide.autoSyncGitPath", true)) {
+      this.bridge.syncIde();
+    }
+    this.notifications.showInfo("GitBridge enabled in ~/.gitconfig and ~/.ssh/config.");
+    this.triggerRefresh();
+  }
+
+  private async handleDisable(): Promise<void> {
+    this.bridge.disableGitBridge();
+    this.notifications.showWarning("GitBridge integration disabled. Restored original Git config.");
+    this.triggerRefresh();
+  }
+
+  private async handleEnableOverride(): Promise<void> {
+    this.bridge.enableOverride();
+    const config = vscode.workspace.getConfiguration("gitbridge");
+    if (config.get<boolean>("ide.autoSyncGitPath", true)) {
+      this.bridge.syncIde();
+    }
+    this.notifications.showInfo("Native Git Override activated! VS Code SCM and terminal now use GitBridge.");
+    this.triggerRefresh();
+  }
+
+  private async handleDisableOverride(): Promise<void> {
+    this.bridge.disableOverride();
+    this.notifications.showWarning("Native Git Override deactivated.");
+    this.triggerRefresh();
+  }
+
+  private async handleToggleOverride(): Promise<void> {
+    const status = this.bridge.getOverrideStatus();
+    if (status.enabled && status.shimsInstalled) {
+      await this.handleDisableOverride();
+    } else {
+      await this.handleEnableOverride();
+    }
+  }
+
+  private async handleSyncIde(): Promise<void> {
+    const result = this.bridge.syncIde();
+    if (result.synced.length > 0) {
+      this.notifications.showInfo(`Synchronized GitBridge with: ${result.synced.join(", ")}`);
+    } else {
+      this.notifications.showInfo("IDE settings configured to use GitBridge shims.");
+    }
+    this.triggerRefresh();
+  }
+
+  private async handleUnsyncIde(): Promise<void> {
+    this.bridge.unsyncIde();
+    this.notifications.showWarning("Restored default IDE Git configurations.");
+    this.triggerRefresh();
+  }
+
   private async handleShowStatusBarMenu(): Promise<void> {
     const cwd = this.contextService.getActiveWorkspaceFolder();
     const ctx = await this.bridge.resolveContext(cwd);
     const identities = this.bridge.loadIdentities();
     const isHookActive = cwd ? await this.bridge.isSafetyHookInstalled(cwd) : false;
+    const overrideStatus = this.bridge.getOverrideStatus();
+    const ideTargets = this.bridge.getIdeStatus();
+    const isIdeSynced = ideTargets.some((t) => t.synced);
 
     type MenuItem = vscode.QuickPickItem & { action: () => Promise<void> };
     const items: MenuItem[] = [];
@@ -201,6 +269,21 @@ export class CommandsController implements vscode.Disposable {
       label: "$(folder-active) Map Current Folder (Add Rule)...",
       description: cwd ? `Create directory rule for ${cwd}` : "Map a workspace folder",
       action: async () => this.handleAddRule(),
+    });
+
+    // 4. Override and IDE Controls
+    items.push({
+      label: overrideStatus.enabled && overrideStatus.shimsInstalled
+        ? "$(zap) Disable Native Git Override"
+        : "$(zap) Enable Native Git Override",
+      description: overrideStatus.enabled ? "Currently proxying all 'git' commands" : "Route standard 'git' through GitBridge",
+      action: async () => this.handleToggleOverride(),
+    });
+
+    items.push({
+      label: isIdeSynced ? "$(sync) Resync IDE Settings" : "$(sync) Sync IDE Settings with GitBridge",
+      description: isIdeSynced ? "VS Code git.path is linked" : "Connect VS Code Source Control & Terminal",
+      action: async () => this.handleSyncIde(),
     });
 
     if (ctx.isGitRepo) {

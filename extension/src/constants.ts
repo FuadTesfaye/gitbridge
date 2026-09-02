@@ -15,6 +15,11 @@ export const COMMANDS = {
   DOCTOR: "gitbridge.doctor",
   ENABLE: "gitbridge.enable",
   DISABLE: "gitbridge.disable",
+  ENABLE_OVERRIDE: "gitbridge.enableOverride",
+  DISABLE_OVERRIDE: "gitbridge.disableOverride",
+  TOGGLE_OVERRIDE: "gitbridge.toggleOverride",
+  SYNC_IDE: "gitbridge.syncIde",
+  UNSYNC_IDE: "gitbridge.unsyncIde",
   REFRESH: "gitbridge.refresh",
   FIX_MISMATCH: "gitbridge.fixMismatch",
   TOGGLE_SAFETY_HOOK: "gitbridge.toggleSafetyHook",
@@ -31,6 +36,8 @@ export const VIEWS = {
 
 export const CONTEXT_KEYS = {
   ENABLED: "gitbridge:enabled",
+  OVERRIDE_ENABLED: "gitbridge:overrideEnabled",
+  IDE_SYNCED: "gitbridge:ideSynced",
   IS_GIT_REPO: "gitbridge:isGitRepo",
   HAS_MISMATCH: "gitbridge:hasMismatch",
   HOOK_INSTALLED: "gitbridge:hookInstalled",

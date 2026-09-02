@@ -21,6 +21,11 @@ import {
   handleOverrideStatusCommand,
   handleGitProxyCommand,
 } from "./commands/override";
+import {
+  handleIdeSyncCommand,
+  handleIdeUnsyncCommand,
+  handleIdeStatusCommand,
+} from "./commands/ide";
 
 export function createProgram(name = "gitbridge"): Command {
   const program = new Command();
@@ -81,6 +86,28 @@ export function createProgram(name = "gitbridge"): Command {
     .action(() => handleOverrideStatusCommand());
 
   overrideCmd.action(() => handleOverrideStatusCommand());
+
+  // IDE Integration Sync (VS Code, Cursor, Antigravity, JetBrains)
+  const ideCmd = program
+    .command("ide")
+    .description("Synchronize IDE configurations (VS Code, Cursor, Antigravity, JetBrains) with GitBridge");
+
+  ideCmd
+    .command("sync")
+    .description("Configure all detected IDEs to route Git operations through GitBridge")
+    .action(() => handleIdeSyncCommand());
+
+  ideCmd
+    .command("unsync")
+    .description("Restore default IDE Git configurations")
+    .action(() => handleIdeUnsyncCommand());
+
+  ideCmd
+    .command("status")
+    .description("Inspect synchronization status across detected IDEs")
+    .action(() => handleIdeStatusCommand());
+
+  ideCmd.action(() => handleIdeStatusCommand());
 
   // Switch Shortcut
   program

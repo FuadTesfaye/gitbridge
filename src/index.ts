@@ -7,6 +7,7 @@ export * from "./core/git/config-generator";
 export * from "./core/git/gitconfig-injector";
 export * from "./core/git/override-manager";
 export * from "./core/git/git-proxy";
+export * from "./core/ide/ide-sync-manager";
 export * from "./core/ssh/ssh-config-generator";
 export * from "./core/ssh/ssh-injector";
 export * from "./core/ssh/ssh-key-detector";

@@ -5,6 +5,7 @@ import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { GitConfigInjector } from "@/core/git/gitconfig-injector";
 import { SshInjector } from "@/core/ssh/ssh-injector";
 import { GitOverrideManager } from "@/core/git/override-manager";
+import { IdeSyncManager } from "@/core/ide/ide-sync-manager";
 import { SshKeyDetector } from "@/core/ssh/ssh-key-detector";
 import { StoreFactory } from "@/core/storage/store-factory";
 import { defaultProviderRegistry } from "@/core/providers/provider-registry";
@@ -18,6 +19,7 @@ export async function handleDoctorCommand(store: ConfigStore = defaultConfigStor
   const gitInjector = new GitConfigInjector(store);
   const sshInjector = new SshInjector(store);
   const overrideManager = new GitOverrideManager(store);
+  const ideManager = new IdeSyncManager(store);
 
   // 1. Core Tooling
   const gitVersion = await git.getGitVersion();
@@ -58,6 +60,15 @@ export async function handleDoctorCommand(store: ConfigStore = defaultConfigStor
     console.log(`     ${pc.green("✔")} ~/.ssh/config:      ${pc.green("Include directive active")}`);
   } else {
     console.log(`     ${pc.gray("○")} ~/.ssh/config:      ${pc.gray("Not enabled")}`);
+  }
+
+  // 2.1 IDE Integrations
+  const ideTargets = ideManager.getIdeStatus();
+  const syncedIdes = ideTargets.filter((t) => t.synced).map((t) => t.name);
+  if (syncedIdes.length > 0) {
+    console.log(`     ${pc.green("✔")} IDE Sync:           ${pc.green(`Active for: ${syncedIdes.join(", ")}`)}`);
+  } else {
+    console.log(`     ${pc.gray("○")} IDE Sync:           ${pc.gray("Not synced (run 'gitbridge ide sync')")}`);
   }
 
   // 3. Credential Store Backend

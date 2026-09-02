@@ -170,6 +170,36 @@
         "category": "GitBridge"
       },
       {
+        "command": "gitbridge.enableOverride",
+        "title": "GitBridge: Enable Native Git Override",
+        "category": "GitBridge",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "gitbridge.disableOverride",
+        "title": "GitBridge: Disable Native Git Override",
+        "category": "GitBridge",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "gitbridge.toggleOverride",
+        "title": "GitBridge: Toggle Native Git Override",
+        "category": "GitBridge",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "gitbridge.syncIde",
+        "title": "GitBridge: Sync IDE with GitBridge",
+        "category": "GitBridge",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "gitbridge.unsyncIde",
+        "title": "GitBridge: Unsync IDE Configuration",
+        "category": "GitBridge",
+        "icon": "$(trash)"
+      },
+      {
         "command": "gitbridge.refresh",
         "title": "GitBridge: Refresh Explorer",
         "category": "GitBridge",
@@ -266,6 +296,16 @@
           "command": "gitbridge.pushAll",
           "when": "viewItem == gitbridge-context-remotes",
           "group": "inline@1"
+        },
+        {
+          "command": "gitbridge.toggleOverride",
+          "when": "viewItem == gitbridge-context-override",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitbridge.syncIde",
+          "when": "viewItem == gitbridge-context-ide",
+          "group": "inline@1"
         }
       ]
     },
@@ -286,6 +326,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show a non-intrusive warning when the repository git email does not match the active directory rule."
+        },
+        "gitbridge.ide.autoSyncGitPath": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically synchronize VS Code 'git.path' and terminal environment with GitBridge shims when enabled."
         }
       }
     }

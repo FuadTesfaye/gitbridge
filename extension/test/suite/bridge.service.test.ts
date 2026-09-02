@@ -55,4 +55,20 @@ describe("Extension BridgeService", () => {
     await bridge.setIdentity("work", undefined, true);
     expect(bridge.loadConfig().defaultIdentityId).toBe("work");
   });
+
+  it("manages override and IDE sync state via bridge", () => {
+    const overrideStatusBefore = bridge.getOverrideStatus();
+    expect(overrideStatusBefore.enabled).toBe(false);
+
+    bridge.enableOverride();
+    const overrideStatusAfter = bridge.getOverrideStatus();
+    expect(overrideStatusAfter.enabled).toBe(true);
+    expect(overrideStatusAfter.shimsInstalled).toBe(true);
+
+    const ideStatus = bridge.getIdeStatus();
+    expect(ideStatus.length).toBeGreaterThan(0);
+
+    bridge.disableOverride();
+    expect(bridge.getOverrideStatus().enabled).toBe(false);
+  });
 });
