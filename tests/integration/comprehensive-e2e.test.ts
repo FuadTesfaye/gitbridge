@@ -13,6 +13,7 @@ import { IdentityResolver } from "@/core/identity/identity-resolver";
 import { IdentityGuard } from "@/core/safety/identity-guard";
 import { EncryptedVaultCredentialStore } from "@/core/storage/encrypted-vault";
 import { parseRemoteUrl, buildSshUrl } from "@/core/git/url-parser";
+import { defaultProviderRegistry } from "@/core/providers/provider-registry";
 import { BridgeService } from "../../extension/src/services/bridge.service";
 
 describe("🌟 Comprehensive GitBridge Big E2E Lifecycle Matrix", () => {
@@ -295,6 +296,10 @@ describe("🌟 Comprehensive GitBridge Big E2E Lifecycle Matrix", () => {
   });
 
   it("7. Lifecycle: Extension Bridge Service & Diagnostics", async () => {
+    for (const p of defaultProviderRegistry.list()) {
+      p.checkHealth = async () => ({ apiOk: true, pingMs: 15, message: "OK" });
+    }
+
     const extBridge = new BridgeService(store);
 
     await extBridge.addIdentity({

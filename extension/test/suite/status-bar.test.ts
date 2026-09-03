@@ -6,12 +6,17 @@ import { ConfigStore } from "../../../src/core/config/config-store";
 import { PathResolver } from "../../../src/core/config/path-resolver";
 import { BridgeService } from "../../src/services/bridge.service";
 
+import { defaultProviderRegistry } from "../../../src/core/providers/provider-registry";
+
 describe("Extension Status Bar & Context Logic", () => {
   let tempDir: string;
   let store: ConfigStore;
   let bridge: BridgeService;
 
   beforeEach(() => {
+    for (const p of defaultProviderRegistry.list()) {
+      p.checkHealth = async () => ({ apiOk: true, pingMs: 10, message: "OK" });
+    }
     tempDir = path.join(os.tmpdir(), `gitbridge-status-test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
     fs.mkdirSync(tempDir, { recursive: true });
     const paths = new PathResolver(tempDir);
