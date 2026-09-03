@@ -181,3 +181,46 @@ Follow these standards when contributing to or testing GitBridge:
    bun run package
    ```
    *Produces `gitbridge-vscode-<version>.vsix` for installation in VS Code, Cursor, or Antigravity IDE.*
+
+---
+
+## Procedure 8: Selective Providers & Diagnostic Inspections
+
+GitBridge uses a **selective-by-default** model (*"Discover broadly, configure narrowly, activate lazily"*).
+
+1. **Quick Progressive Setup**:
+   ```bash
+   gb setup --quick
+   ```
+   *Automatically detects existing Git tools, SSH keys, active remotes, and configures only the providers found.*
+
+2. **Managing Enabled Providers**:
+   ```bash
+   # List supported providers and their enabled/authenticated status
+   gb prov ls
+
+   # Enable a provider (e.g. GitLab)
+   gb prov enable gitlab
+
+   # Disable a provider (without erasing credentials)
+   gb prov disable bitbucket
+   ```
+
+3. **Inspecting Resolution Decision Tree (Why was an identity chosen?)**:
+   ```bash
+   gb explain
+   ```
+   *Breaks down the 5-tier resolution ladder (Local Repo Config -> Repos Profile -> Directory Rule -> Global Default -> System Fallback).*
+
+4. **Exporting Environment Variables for Shells / CI**:
+   ```bash
+   gb env
+   # Evaluate directly in current shell session:
+   eval "$(gb env)"
+   ```
+
+5. **Machine-Readable Context for IDEs & Scripts**:
+   ```bash
+   gb ctx --json
+   ```
+

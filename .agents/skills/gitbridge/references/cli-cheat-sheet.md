@@ -12,9 +12,11 @@ All commands, subcommands, and flags are identical between `gitbridge` and `gb`.
 
 | Shorthand | Full Command | Options & Flags | Description |
 |---|---|---|---|
-| `gb setup` | `gitbridge setup` | None | Interactive wizard to configure identities, providers, and rules |
+| `gb setup` | `gitbridge setup` | `-q, --quick` | Progressive onboarding wizard; `--quick` auto-detects system and applies configuration |
 | `gb st` | `gitbridge status` | None | Display configured identities, accounts, directory rules, and system state |
-| `gb ctx` | `gitbridge context` | None | Inspect resolved Git author, matching rule, remotes, and warnings for current directory |
+| `gb ctx` | `gitbridge context` | `--json` | Inspect resolved Git author, matching rule, remotes, and warnings (supports JSON output) |
+| `gb explain` | `gitbridge explain` | None | Decision tree diagnostics explaining WHY a specific identity, rule, or key was chosen |
+| `gb env` | `gitbridge env` | None | Print shell environment export statements (`GIT_AUTHOR_NAME`, `GIT_SSH_COMMAND`, etc.) |
 | `gb sw [id]` | `gitbridge switch [id]` | `-g, --global` | Switch active identity for the current repository or globally |
 | `gb init` | `gitbridge init` | None | Initialize GitBridge profile and install pre-commit guard in current repo |
 | `gb doc` | `gitbridge doctor` | None | Run system health, keyring, SSH key, and provider connectivity diagnostics |
@@ -40,9 +42,12 @@ All commands, subcommands, and flags are identical between `gitbridge` and `gb`.
 |---|---|---|
 | `gb acc ls` | `gb acc list` | List authenticated provider accounts and linked SSH keys |
 | `gb acc rm <id>` | `gb acc remove <id>` | Delete an account record and remove its secret from OS keychain |
-| `gb auth login [provider]` | `gb auth login` | Authenticate with GitHub, GitLab, or Bitbucket. <br>`gb auth login github --token <pat> --ssh-key ~/.ssh/id_work` |
+| `gb auth login [provider]` | `gb auth login` | Authenticate with GitHub, GitLab, or Bitbucket. Supports `-t, --token`, `-u, --username`, `-p, --password`, `--host`, `--ssh-key`. <br>`gb auth login gitlab --host http://172.27.23.116 -u user@insa.gov.et -p 'secret'` |
 | `gb auth logout <provider> [user]` | `gb auth logout` | Log out and revoke credentials from keychain |
-| `gb prov ls` | `gb provider list` | List supported Git providers (GitHub, GitLab, Bitbucket) and their hosts |
+| `gb prov ls` | `gb provider list` | List supported Git providers, active status, accounts, and capabilities |
+| `gb prov enable <id>` | `gb provider enable <id>` | Enable a Git provider for management and auto-detection |
+| `gb prov disable <id>` | `gb provider disable <id>` | Disable a Git provider (preserves stored accounts and credentials) |
+| `gb prov add` | `gb provider add` | Interactively select and enable a Git provider from supported platforms |
 
 ---
 
