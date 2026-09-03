@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { ConfigStore } from "../config/config-store";
 import { expandTilde } from "@/utils/platform";
+import { sanitizeConfigString } from "@/utils/security";
 
 export class SshConfigGenerator {
   private store: ConfigStore;
@@ -25,14 +26,18 @@ export class SshConfigGenerator {
       content += `# No accounts currently configured with custom SSH keys.\n`;
     } else {
       for (const account of sshAccounts) {
-        const hostAlias = `${account.host}-${account.id}`;
-        const keyPath = expandTilde(account.sshKeyPath!);
+        const cleanHost = sanitizeConfigString(account.host);
+        const cleanId = sanitizeConfigString(account.id);
+        const hostAlias = `${cleanHost}-${cleanId}`;
+        const keyPath = sanitizeConfigString(expandTilde(account.sshKeyPath!));
+        const cleanUser = "git";
+        const displayName = sanitizeConfigString(account.displayName || account.username);
 
-        content += `# Account: ${account.displayName || account.username} (${account.providerId})\n`;
+        content += `# Account: ${displayName} (${account.providerId})\n`;
         content += `Host ${hostAlias}\n`;
-        content += `    HostName ${account.host}\n`;
-        content += `    User git\n`;
-        if (account.sshPort) {
+        content += `    HostName ${cleanHost}\n`;
+        content += `    User ${cleanUser}\n`;
+        if (account.sshPort && typeof account.sshPort === "number" && account.sshPort > 0 && account.sshPort < 65536) {
           content += `    Port ${account.sshPort}\n`;
         }
         content += `    IdentityFile ${keyPath}\n`;
@@ -41,6 +46,11 @@ export class SshConfigGenerator {
     }
 
     fs.writeFileSync(generatedSshFile, content, { encoding: "utf-8", mode: 0o600 });
+    try {
+      fs.chmodSync(generatedSshFile, 0o600);
+    } catch {
+      // ignore on Windows
+    }
     return generatedSshFile;
   }
 }

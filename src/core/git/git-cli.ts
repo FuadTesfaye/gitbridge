@@ -152,4 +152,21 @@ export class GitCli {
     }
     return null;
   }
+
+  async getStagedFiles(): Promise<string[]> {
+    const res = await this.exec(["diff", "--name-only", "--cached"], { allowFailure: true });
+    if (res.exitCode !== 0 || !res.stdout) return [];
+    return res.stdout
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  async showStagedFile(file: string): Promise<string | null> {
+    const res = await this.exec(["show", `:0:${file}`], { allowFailure: true });
+    if (res.exitCode === 0) {
+      return res.stdout;
+    }
+    return null;
+  }
 }

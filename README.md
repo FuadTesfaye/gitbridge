@@ -245,6 +245,9 @@ If your repository's local Git email conflicts with your GitBridge rule, commits
 | `gb ssh ls` | `gb ssh list` | None | List SSH keys in `~/.ssh` and linked accounts |
 | `gb ssh gen` | `gb ssh generate` | `[--name <name>] [--email <email>]` | Generate new ed25519 SSH key |
 | `gb ssh link` | `gb ssh link` | `[keyPath] [accountId]` | Link SSH key to an account |
+| `gb sec check`| `gb security check` | None | Full security health audit (permissions, remotes, keyring, staged secrets) |
+| `gb sec fix` | `gb security fix` | None | Auto-lock permissions to `0700/0600`, scrub remote tokens, install hooks |
+| `gb sec scan`| `gb security scan` | `[path]` | Scan directory tree for private keys, API tokens, and `.env` files |
 | `gb override` | `gb override` | `enable \| disable \| status` | Transparently intercept standard `git` binary |
 | `gb ide` | `gb ide` | `sync \| unsync \| status` | Sync Git path & terminal env with VS Code / Cursor |
 | `gb completion`| `gb completion` | `[bash \| zsh \| fish]` | Generate shell autocompletion script |

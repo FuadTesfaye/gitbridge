@@ -26,6 +26,7 @@ import { handleDoctorCommand } from "./commands/doctor";
 import { handleSetupCommand } from "./commands/setup";
 import { handleCredentialCommand } from "./commands/credential";
 import { handleHookCommand } from "./commands/hook";
+import { handleSecurityCheck, handleSecurityFix, handleSecurityScan } from "./commands/security";
 import {
   handleOverrideEnableCommand,
   handleOverrideDisableCommand,
@@ -45,7 +46,7 @@ export function createProgram(name = "gitbridge"): Command {
   program
     .name(name)
     .description("Universal Git Identity & Multi-Account Management Layer")
-    .version("0.2.3");
+    .version("0.2.4");
 
   configureProgramHelp(program, name);
 
@@ -320,9 +321,21 @@ export function createProgram(name = "gitbridge"): Command {
   credCmd.command("store").description("Store credentials for git").action(() => handleCredentialCommand("store"));
   credCmd.command("erase").description("Erase credentials for git").action(() => handleCredentialCommand("erase"));
 
+  // Security Subcommands
+  const secCmd = program
+    .command("security")
+    .alias("sec")
+    .description("Security health audit, permission hardening, and secret scanning")
+    .action(() => handleSecurityCheck());
+  
+  secCmd.command("check").description("Run full security audit (permissions, remotes, keyring, staged secrets)").action(() => handleSecurityCheck());
+  secCmd.command("fix").description("Auto-lock permissions to 0700/0600, scrub remote credentials, and install safety hooks").action(() => handleSecurityFix());
+  secCmd.command("scan [path]").description("Scan a directory tree for private keys, API tokens, and sensitive files").action((p) => handleSecurityScan(p));
+
   // Hook Subcommand (Invoked by Git hooks)
   const hookCmd = program.command("hook").description("Internal Git hook runner");
-  hookCmd.command("pre-commit").description("Pre-commit identity validation").action(() => handleHookCommand("pre-commit"));
+  hookCmd.command("pre-commit").description("Pre-commit identity & secret validation").action(() => handleHookCommand("pre-commit"));
+  hookCmd.command("pre-push").description("Pre-push identity & remote credential validation").action(() => handleHookCommand("pre-push"));
 
   // Internal Git Proxy Runner (Invoked by ~/.gitbridge/shims/git)
   program

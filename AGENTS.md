@@ -170,6 +170,11 @@ GitBridge provides dual binaries: `gitbridge` (verbose) and `gb` (fast shorthand
 - `gb rem add <name> <url> [-a <accountId>]`: Add remote with automatic SSH host alias routing.
 - `gb push [target] [--all] [--tags] [-f]`: Push active branch across configured remotes concurrently.
 
+### Security & Secret Scanning
+- `gb sec check` (`gb security check`): Full security audit (permissions, remotes, keyring, staged secrets).
+- `gb sec fix` (`gb security fix`): Auto-lock permissions to `0700/0600`, scrub remote tokens into Keyring, install hooks.
+- `gb sec scan [path]` (`gb security scan`): Scan directory tree for private keys, API tokens, and sensitive files.
+
 ### System Integration & Native Git Override
 - `gb enable`: Inject GitBridge managed blocks into `~/.gitconfig` and `~/.ssh/config`.
 - `gb disable`: Safely remove GitBridge managed blocks and restore backups.

@@ -38,6 +38,7 @@ export function formatRootHelp(programName: string = "gitbridge"): string {
 
   const integrations: HelpRow[] = [
     { name: "override", desc: "Route native 'git' commands through GitBridge (enable | disable | status)" },
+    { name: "security", alias: "sec", desc: "Security audit, permission hardening, and secret scanning (check | fix | scan)" },
     { name: "ide", desc: "Sync IDE configurations (VS Code, Cursor, Antigravity) (sync | unsync | status)" },
     { name: "enable", desc: "Enable GitBridge integration in ~/.gitconfig and ~/.ssh/config" },
     { name: "disable", desc: "Disable GitBridge integration and safely restore original configs" },
@@ -55,7 +56,7 @@ export function formatRootHelp(programName: string = "gitbridge"): string {
   ];
 
   return `
-  ${pc.bold(pc.cyan("GitBridge 🌉"))} ${pc.gray("(v0.2.3)")}
+  ${pc.bold(pc.cyan("GitBridge 🌉"))} ${pc.gray("(v0.2.4)")}
   ${pc.gray("Universal Git Identity & Multi-Account Management Layer")}
 
   ${header("USAGE")}

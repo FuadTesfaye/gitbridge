@@ -64,6 +64,11 @@ export class ConfigStore {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
       }
+      try {
+        fs.chmodSync(dir, 0o700);
+      } catch {
+        // ignore on Windows
+      }
     }
   }
 
@@ -73,6 +78,11 @@ export class ConfigStore {
     const content = JSON.stringify(data, null, 2);
     fs.writeFileSync(tempFile, content, { encoding: "utf-8", mode: 0o600 });
     fs.renameSync(tempFile, filepath);
+    try {
+      fs.chmodSync(filepath, 0o600);
+    } catch {
+      // ignore on Windows
+    }
   }
 
   // --- Main Config ---

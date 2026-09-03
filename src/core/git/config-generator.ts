@@ -50,7 +50,12 @@ export class GitConfigGenerator {
         }
       }
 
-      fs.writeFileSync(ruleFile, ruleContent, { encoding: "utf-8", mode: 0o644 });
+      fs.writeFileSync(ruleFile, ruleContent, { encoding: "utf-8", mode: 0o600 });
+      try {
+        fs.chmodSync(ruleFile, 0o600);
+      } catch {
+        // ignore on Windows
+      }
       ruleFiles.push(ruleFile);
     }
 
@@ -88,7 +93,12 @@ export class GitConfigGenerator {
     }
 
     const mainFile = paths.getMainGitConfigFile();
-    fs.writeFileSync(mainFile, mainContent, { encoding: "utf-8", mode: 0o644 });
+    fs.writeFileSync(mainFile, mainContent, { encoding: "utf-8", mode: 0o600 });
+    try {
+      fs.chmodSync(mainFile, 0o600);
+    } catch {
+      // ignore on Windows
+    }
 
     return {
       mainConfigPath: mainFile,
