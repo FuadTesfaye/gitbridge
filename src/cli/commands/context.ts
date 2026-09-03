@@ -5,9 +5,55 @@ import { renderRemotesTable } from "../ui/tables";
 import { formatBadge } from "../ui/banners";
 import pc from "picocolors";
 
-export async function handleContextCommand(store: ConfigStore = defaultConfigStore) {
+export interface ContextCommandOptions {
+  json?: boolean;
+}
+
+export async function handleContextCommand(options: ContextCommandOptions = {}, store: ConfigStore = defaultConfigStore) {
   const resolver = new IdentityResolver(store);
   const ctx = await resolver.resolve();
+
+  if (options.json) {
+    const jsonOutput = {
+      repository: ctx.repoRoot ? path.basename(ctx.repoRoot) : null,
+      repositoryPath: ctx.repoRoot,
+      isGitRepo: ctx.isGitRepo,
+      source: ctx.source,
+      identity: ctx.identity
+        ? {
+            id: ctx.identity.id,
+            name: ctx.identity.name,
+            email: ctx.identity.email,
+            signingKey: ctx.identity.signingKey,
+          }
+        : null,
+      account: ctx.account
+        ? {
+            id: ctx.account.id,
+            provider: ctx.account.providerId,
+            username: ctx.account.username,
+            host: ctx.account.host,
+            sshKeyPath: ctx.account.sshKeyPath,
+          }
+        : null,
+      provider: ctx.detectedRemoteProvider
+        ? {
+            id: ctx.detectedRemoteProvider.id,
+            name: ctx.detectedRemoteProvider.name,
+            host: ctx.detectedRemoteProvider.host,
+            isEnabled: ctx.detectedRemoteProvider.isEnabled,
+            isConfigured: ctx.detectedRemoteProvider.isConfigured,
+          }
+        : null,
+      matchedRule: ctx.matchedRule ? { id: ctx.matchedRule.id, path: ctx.matchedRule.path } : null,
+      localGitEmail: ctx.localGitEmail,
+      localGitName: ctx.localGitName,
+      isMismatched: ctx.isMismatched,
+    };
+
+    console.log(JSON.stringify(jsonOutput, null, 2));
+    return;
+  }
 
   console.log(pc.bold("\n  GITBRIDGE CONTEXT"));
   console.log("  ──────────────────────────────────────────────────");
@@ -48,6 +94,13 @@ export async function handleContextCommand(store: ConfigStore = defaultConfigSto
 
   if (ctx.matchedRule) {
     console.log(`  Matched Rule:           ${pc.blue(ctx.matchedRule.id)} (${ctx.matchedRule.path})`);
+  }
+
+  if (ctx.detectedRemoteProvider && !ctx.detectedRemoteProvider.isConfigured) {
+    console.log(
+      pc.yellow(`\n  💡 Lazy Discovery: This repository uses ${pc.bold(ctx.detectedRemoteProvider.name)} (${ctx.detectedRemoteProvider.host}), which is not yet configured in GitBridge.`)
+    );
+    console.log(pc.gray(`     Run 'gb auth login ${ctx.detectedRemoteProvider.id}' to connect this provider account.`));
   }
 
   if (ctx.isGitRepo && ctx.remotes.length > 0) {

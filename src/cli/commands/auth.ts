@@ -9,9 +9,17 @@ import { promptSelect, promptText, promptConfirm } from "../ui/prompts";
 import { logger } from "@/utils/logger";
 import type { GitProviderType } from "@/core/config/schema";
 
+export interface AuthLoginOptions {
+  token?: string;
+  host?: string;
+  sshKey?: string;
+  username?: string;
+  password?: string;
+}
+
 export async function handleAuthLogin(
   providerName?: string,
-  options: { token?: string; host?: string; sshKey?: string } = {},
+  options: AuthLoginOptions = {},
   store: ConfigStore = defaultConfigStore
 ) {
   let targetProvider = providerName?.toLowerCase() as GitProviderType | undefined;
@@ -36,6 +44,23 @@ export async function handleAuthLogin(
   const host = options.host || provider.defaultHost;
   let token = options.token;
   let username = "";
+
+  // Password / OAuth token retrieval if username and password provided
+  if (!token && options.username && options.password && targetProvider === "gitlab") {
+    const gl = provider as any;
+    if (typeof gl.loginWithPassword === "function") {
+      const spin = ora("Authenticating with GitLab via credentials...").start();
+      try {
+        const loginRes = await gl.loginWithPassword(options.username, options.password, host);
+        token = loginRes.token;
+        spin.succeed("Authenticated with GitLab!");
+      } catch (e: any) {
+        spin.fail("GitLab password authentication failed.");
+        logger.error(e?.message || String(e));
+        return;
+      }
+    }
+  }
 
   if (!token) {
     if (targetProvider === "github" && provider.startDeviceFlow && provider.pollDeviceFlow) {
@@ -107,13 +132,17 @@ export async function handleAuthLogin(
       }
     }
 
+    const cleanHost = host.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
     const accountId = `${targetProvider}_${username.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+
+    // Enable provider if not already enabled
+    defaultProviderRegistry.enableProvider(targetProvider, store);
 
     // Save account
     store.addAccount({
       id: accountId,
       providerId: targetProvider,
-      host,
+      host: cleanHost,
       username,
       displayName: user.displayName,
       authType: "oauth",
@@ -122,17 +151,17 @@ export async function handleAuthLogin(
 
     // Save token in secure store
     const credStore = await StoreFactory.getStore(store.getPathResolver());
-    await credStore.set(host, accountId, token);
+    await credStore.set(cleanHost, accountId, token);
 
     // Update SSH config
     const sshGen = new SshConfigGenerator(store);
     sshGen.generate();
 
     logger.success(`Account '${accountId}' registered and token secured in OS Keychain/Keyring!`);
-    console.log(pc.gray(`  Host:      ${host}`));
+    console.log(pc.gray(`  Host:      ${cleanHost}`));
     console.log(pc.gray(`  Username:  ${username}`));
     if (sshKeyPath) {
-      console.log(pc.gray(`  SSH Alias: ${host}-${accountId}`));
+      console.log(pc.gray(`  SSH Alias: ${cleanHost}-${accountId}`));
     }
     console.log("");
   } catch (err: unknown) {

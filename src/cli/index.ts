@@ -4,7 +4,14 @@ import { handleEnableCommand, handleDisableCommand } from "./commands/enable";
 import { handleIdentityList, handleIdentityAdd, handleIdentityUse, handleIdentityRemove } from "./commands/identity";
 import { handleAccountList, handleAccountRemove } from "./commands/account";
 import { handleAuthLogin, handleAuthLogout } from "./commands/auth";
-import { handleProviderList } from "./commands/provider";
+import {
+  handleProviderList,
+  handleProviderEnable,
+  handleProviderDisable,
+  handleProviderAdd,
+} from "./commands/provider";
+import { handleExplainCommand } from "./commands/explain";
+import { handleEnvCommand } from "./commands/env";
 import { handleRuleList, handleRuleAdd, handleRuleRemove } from "./commands/rule";
 import { handleRepoInit } from "./commands/repo";
 import { handleContextCommand } from "./commands/context";
@@ -42,7 +49,8 @@ export function createProgram(name = "gitbridge"): Command {
   program
     .command("setup")
     .description("Interactive onboarding wizard to configure identities, providers, and rules")
-    .action(() => handleSetupCommand());
+    .option("-q, --quick", "Quick automatic setup using detected Git environment")
+    .action((opts) => handleSetupCommand(opts));
 
   // Status & Context
   program
@@ -55,7 +63,18 @@ export function createProgram(name = "gitbridge"): Command {
     .command("context")
     .alias("ctx")
     .description("Display GitBridge and Git identity context for current directory or repo")
-    .action(() => handleContextCommand());
+    .option("--json", "Output machine-readable JSON")
+    .action((opts) => handleContextCommand(opts));
+
+  program
+    .command("explain")
+    .description("Explain why GitBridge selected the current identity and configuration")
+    .action(() => handleExplainCommand());
+
+  program
+    .command("env")
+    .description("Print shell environment exports for current repository")
+    .action(() => handleEnvCommand());
 
   // Enable / Disable
   program
@@ -160,6 +179,8 @@ export function createProgram(name = "gitbridge"): Command {
     .command("login [provider]")
     .description("Log in to a Git provider (GitHub, GitLab, Bitbucket)")
     .option("-t, --token <token>", "Personal access token")
+    .option("-u, --username <username>", "Username / email for credentials login")
+    .option("-p, --password <password>", "Password for credentials login")
     .option("--host <host>", "Custom host for enterprise/self-hosted instances")
     .option("--ssh-key <path>", "Path to SSH private key to associate")
     .action((prov, opts) => handleAuthLogin(prov, opts));
@@ -172,9 +193,12 @@ export function createProgram(name = "gitbridge"): Command {
   const providerCmd = program
     .command("provider")
     .alias("prov")
-    .description("Inspect supported Git providers");
+    .description("Inspect and manage supported Git providers");
   
-  providerCmd.command("list").alias("ls").description("List supported Git providers").action(() => handleProviderList());
+  providerCmd.command("list").alias("ls").description("List supported Git providers and active state").action(() => handleProviderList());
+  providerCmd.command("enable <id>").description("Enable a provider for detection and management").action((id) => handleProviderEnable(id));
+  providerCmd.command("disable <id>").description("Disable a provider").action((id) => handleProviderDisable(id));
+  providerCmd.command("add").description("Interactively select and enable a provider").action(() => handleProviderAdd());
 
   // Rule Subcommands
   const ruleCmd = program

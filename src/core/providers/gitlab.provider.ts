@@ -3,6 +3,7 @@ import type {
   ProviderUser,
   RemoteRepository,
   HealthCheckResult,
+  ProviderCapabilities,
 } from "./provider.interface";
 import { requestJson } from "@/utils/http";
 import { ProviderError } from "@/utils/errors";
@@ -11,10 +12,41 @@ export class GitLabProvider implements GitProvider {
   readonly id = "gitlab" as const;
   readonly name = "GitLab";
   readonly defaultHost = "gitlab.com";
+  readonly capabilities: ProviderCapabilities = {
+    oauth: true,
+    deviceCode: false,
+    tokenAuth: true,
+    passwordAuth: true,
+    sshKeys: true,
+    selfHosted: true,
+  };
 
   private getApiUrl(host?: string): string {
     const targetHost = host || this.defaultHost;
+    if (targetHost.startsWith("http://") || targetHost.startsWith("https://")) {
+      return `${targetHost.replace(/\/+$/, "")}/api/v4`;
+    }
     return `https://${targetHost}/api/v4`;
+  }
+
+  async loginWithPassword(username: string, password: string, host?: string): Promise<{ token: string }> {
+    const targetHost = host || this.defaultHost;
+    const baseUrl = targetHost.startsWith("http://") || targetHost.startsWith("https://")
+      ? targetHost.replace(/\/+$/, "")
+      : `https://${targetHost}`;
+    const res = await requestJson<{ access_token?: string; error?: string; error_description?: string }>(
+      `${baseUrl}/oauth/token`,
+      "POST",
+      {
+        grant_type: "password",
+        username,
+        password,
+      }
+    );
+    if (!res.data.access_token) {
+      throw new ProviderError(res.data.error_description || res.data.error || "Failed to authenticate with GitLab", this.name);
+    }
+    return { token: res.data.access_token };
   }
 
   private getAuthHeader(token: string): Record<string, string> {

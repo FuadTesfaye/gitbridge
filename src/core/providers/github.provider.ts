@@ -4,6 +4,7 @@ import type {
   RemoteRepository,
   HealthCheckResult,
   DeviceCodeResponse,
+  ProviderCapabilities,
 } from "./provider.interface";
 import { requestJson } from "@/utils/http";
 import { ProviderError } from "@/utils/errors";
@@ -14,11 +15,22 @@ export class GitHubProvider implements GitProvider {
   readonly id = "github" as const;
   readonly name = "GitHub";
   readonly defaultHost = "github.com";
+  readonly capabilities: ProviderCapabilities = {
+    oauth: true,
+    deviceCode: true,
+    tokenAuth: true,
+    passwordAuth: false,
+    sshKeys: true,
+    selfHosted: true,
+  };
 
   private getApiUrl(host?: string): string {
     const targetHost = host || this.defaultHost;
     if (targetHost === "github.com") {
       return "https://api.github.com";
+    }
+    if (targetHost.startsWith("http://") || targetHost.startsWith("https://")) {
+      return `${targetHost.replace(/\/+$/, "")}/api/v3`;
     }
     // GitHub Enterprise Server
     return `https://${targetHost}/api/v3`;

@@ -3,6 +3,7 @@ import type {
   ProviderUser,
   RemoteRepository,
   HealthCheckResult,
+  ProviderCapabilities,
 } from "./provider.interface";
 import { requestJson } from "@/utils/http";
 import { ProviderError } from "@/utils/errors";
@@ -11,11 +12,22 @@ export class BitbucketProvider implements GitProvider {
   readonly id = "bitbucket" as const;
   readonly name = "Bitbucket";
   readonly defaultHost = "bitbucket.org";
+  readonly capabilities: ProviderCapabilities = {
+    oauth: false,
+    deviceCode: false,
+    tokenAuth: true,
+    passwordAuth: true,
+    sshKeys: true,
+    selfHosted: true,
+  };
 
   private getApiUrl(host?: string): string {
     const targetHost = host || this.defaultHost;
     if (targetHost === "bitbucket.org") {
       return "https://api.bitbucket.org/2.0";
+    }
+    if (targetHost.startsWith("http://") || targetHost.startsWith("https://")) {
+      return `${targetHost.replace(/\/+$/, "")}/rest/api/1.0`;
     }
     // Bitbucket Server / Data Center
     return `https://${targetHost}/rest/api/1.0`;

@@ -14,6 +14,7 @@ export * from "./core/ssh/ssh-key-detector";
 export * from "./core/identity/identity-resolver";
 export * from "./core/providers/provider.interface";
 export * from "./core/providers/provider-registry";
+export * from "./core/providers/provider-detector";
 export * from "./core/providers/github.provider";
 export * from "./core/providers/gitlab.provider";
 export * from "./core/providers/bitbucket.provider";

@@ -41,10 +41,33 @@ export interface DeviceCodeResponse {
   interval: number;
 }
 
+export interface ProviderCapabilities {
+  oauth: boolean;
+  deviceCode: boolean;
+  tokenAuth: boolean;
+  passwordAuth: boolean;
+  sshKeys: boolean;
+  selfHosted: boolean;
+}
+
+export type ProviderStatus = "available" | "enabled" | "configured" | "authenticated";
+
+export interface ProviderInstallationState {
+  providerId: GitProviderType;
+  name: string;
+  defaultHost: string;
+  status: ProviderStatus;
+  enabled: boolean;
+  configured: boolean;
+  accountCount: number;
+  capabilities: ProviderCapabilities;
+}
+
 export interface GitProvider {
   readonly id: GitProviderType;
   readonly name: string;
   readonly defaultHost: string;
+  readonly capabilities: ProviderCapabilities;
 
   validateToken(token: string, host?: string): Promise<boolean>;
   getUser(token: string, host?: string): Promise<ProviderUser>;
@@ -55,3 +78,4 @@ export interface GitProvider {
   startDeviceFlow?(): Promise<DeviceCodeResponse>;
   pollDeviceFlow?(deviceCode: string, interval: number): Promise<{ token: string }>;
 }
+

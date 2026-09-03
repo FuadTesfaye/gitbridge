@@ -30,6 +30,8 @@ export function formatRootHelp(programName: string = "gitbridge"): string {
     { name: "setup", desc: "Interactive onboarding wizard to configure identities & rules" },
     { name: "status", alias: "st", desc: "Show active identity, accounts, remotes, and routing rules" },
     { name: "context", alias: "ctx", desc: "Inspect Git and GitBridge identity context for current repo" },
+    { name: "explain", desc: "Explain why GitBridge selected the current identity & configuration" },
+    { name: "env", desc: "Print shell environment exports for current repository" },
     { name: "switch", alias: "sw", args: "[id]", desc: "Quickly switch active Git identity (locally or --global)" },
     { name: "init", desc: "Initialize a GitBridge profile for current Git repository" },
   ];

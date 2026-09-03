@@ -83,4 +83,24 @@ describe("IdentityResolver", () => {
     expect(ctx.identity?.id).toBe("opensource");
     expect(ctx.identity?.email).toBe("os@example.com");
   });
+
+  it("prioritizes local repository config (.git/gitbridge.json) above all else", async () => {
+    store.addIdentity({ id: "personal", name: "Fuad Personal", email: "p@example.com" });
+    store.addIdentity({ id: "client_special", name: "Client Special", email: "client@special.com" });
+
+    const localRepo = path.join(tempDir, "client_project");
+    fs.mkdirSync(path.join(localRepo, ".git"), { recursive: true });
+
+    // Write .git/gitbridge.json
+    fs.writeFileSync(
+      path.join(localRepo, ".git", "gitbridge.json"),
+      JSON.stringify({ profile: "client_special" }),
+      "utf-8"
+    );
+
+    const ctx = await resolver.resolve(localRepo);
+    expect(ctx.source).toBe("repo_profile");
+    expect(ctx.identity?.id).toBe("client_special");
+    expect(ctx.identity?.email).toBe("client@special.com");
+  });
 });

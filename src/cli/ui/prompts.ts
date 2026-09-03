@@ -50,11 +50,13 @@ export async function promptMultiSelect<T extends string>(options: {
   message: string;
   options: Array<PromptOption<T>>;
   required?: boolean;
+  initialValues?: T[];
 }): Promise<T[]> {
   const res = await p.multiselect({
     message: options.message,
     options: options.options as any,
     required: options.required,
+    initialValues: options.initialValues as any,
   });
   if (p.isCancel(res)) handleCancel();
   return res as T[];

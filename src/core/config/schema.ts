@@ -15,6 +15,18 @@ export const GitIdentitySchema = z.object({
   email: z.string().email(),
   signingKey: z.string().nullable().optional().default(null),
   isDefault: z.boolean().optional().default(false),
+  defaults: z
+    .object({
+      provider: GitProviderTypeSchema.optional(),
+      account: z.string().optional(),
+    })
+    .optional(),
+  ssh: z
+    .object({
+      keyPath: z.string().optional(),
+      hostAlias: z.string().optional(),
+    })
+    .optional(),
   createdAt: z.string().datetime().optional().default(() => new Date().toISOString()),
 });
 export type GitIdentity = z.infer<typeof GitIdentitySchema>;
@@ -64,12 +76,25 @@ export const GitBridgeSettingsSchema = z.object({
 });
 export type GitBridgeSettings = z.infer<typeof GitBridgeSettingsSchema>;
 
+// Provider Configuration
+export const ProviderConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  defaultAccount: z.string().optional(),
+  customHost: z.string().optional(),
+  type: GitProviderTypeSchema.optional(),
+});
+export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
+
 // Main Configuration
 export const MainConfigSchema = z.object({
   $schema: z.string().optional(),
   version: z.string().default("1.0.0"),
   enabled: z.boolean().default(true),
   defaultIdentityId: z.string().nullable().optional().default(null),
+  defaultProvider: GitProviderTypeSchema.optional(),
+  providers: z
+    .record(z.string(), ProviderConfigSchema)
+    .default({ github: { enabled: true } }),
   rules: z.array(DirectoryRuleSchema).default([]),
   settings: GitBridgeSettingsSchema.default({}),
 });
@@ -110,3 +135,13 @@ export const CustomProviderSchema = z.object({
   apiBaseUrl: z.string().url().optional(),
 });
 export type CustomProvider = z.infer<typeof CustomProviderSchema>;
+
+// Local Repository Override (.git/gitbridge.json)
+export const LocalRepoConfigSchema = z.object({
+  profile: z.string().optional(),
+  identityId: z.string().optional(),
+  providerId: GitProviderTypeSchema.optional(),
+  accountId: z.string().optional(),
+});
+export type LocalRepoConfig = z.infer<typeof LocalRepoConfigSchema>;
+
