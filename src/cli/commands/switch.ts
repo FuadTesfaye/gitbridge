@@ -1,3 +1,5 @@
+import path from "node:path";
+import fs from "node:fs";
 import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { GitCli } from "@/core/git/git-cli";
 import { GitConfigGenerator } from "@/core/git/config-generator";
@@ -56,6 +58,25 @@ export async function handleSwitchCommand(
         updatedAt: new Date().toISOString(),
       };
       store.saveRepositoryProfile(profile);
+
+      // Also persist to Tier 1 local repository override (.git/gitbridge.json)
+      const gitDir = path.join(repoRoot, ".git");
+      if (fs.existsSync(gitDir)) {
+        const localConfigPath = path.join(gitDir, "gitbridge.json");
+        let localData: Record<string, unknown> = {};
+        if (fs.existsSync(localConfigPath)) {
+          try {
+            localData = JSON.parse(fs.readFileSync(localConfigPath, "utf-8"));
+          } catch {
+            // ignore JSON parse error
+          }
+        }
+        fs.writeFileSync(
+          localConfigPath,
+          JSON.stringify({ ...localData, profile: identity.id, identityId: identity.id }, null, 2),
+          "utf-8"
+        );
+      }
     }
 
     logger.success(`Switched repository identity to '${identity.id}'!`);

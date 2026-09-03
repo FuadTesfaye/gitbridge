@@ -1,7 +1,7 @@
 import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { GitConfigGenerator } from "@/core/git/config-generator";
 import { renderIdentitiesTable } from "../ui/tables";
-import { promptText, promptConfirm } from "../ui/prompts";
+import { promptText, promptConfirm, promptSelect } from "../ui/prompts";
 import { logger } from "@/utils/logger";
 import pc from "picocolors";
 
@@ -113,6 +113,94 @@ export async function handleIdentityUse(id: string, store: ConfigStore = default
   logger.success(`Switched global default Git identity to '${target.id}' (${target.email})`);
 }
 
+export async function handleIdentityEdit(
+  idArg?: string,
+  options: { name?: string; email?: string; signingKey?: string; default?: boolean } = {},
+  store: ConfigStore = defaultConfigStore
+) {
+  let id = idArg;
+  const identities = store.loadIdentities();
+  if (identities.length === 0) {
+    logger.warn("No identities configured. Run 'gitbridge identity add' first.");
+    return;
+  }
+
+  if (!id) {
+    id = await promptSelect({
+      message: "Select identity to edit:",
+      options: identities.map((i) => ({
+        value: i.id,
+        label: `${i.id} (${i.name} <${i.email}>)`,
+        hint: i.isDefault ? "default" : undefined,
+      })),
+    });
+  }
+
+  const existing = store.getIdentity(id);
+  if (!existing) {
+    logger.error(`Identity with ID '${id}' not found.`);
+    return;
+  }
+
+  const isInteractive =
+    !options.name && !options.email && options.signingKey === undefined && options.default === undefined;
+
+  let newName = options.name;
+  let newEmail = options.email;
+  let newSigningKey: string | null | undefined = options.signingKey;
+  let newDefault = options.default;
+
+  if (isInteractive) {
+    newName = await promptText({
+      message: "Full name for Git commits:",
+      defaultValue: existing.name,
+      validate: (val) => (!val || !val.trim() ? "Name cannot be empty." : undefined),
+    });
+
+    newEmail = await promptText({
+      message: "Email address for Git commits:",
+      defaultValue: existing.email,
+      validate: (val) => (!val || !val.includes("@") ? "Please enter a valid email address." : undefined),
+    });
+
+    const editKey = await promptConfirm({
+      message: `Configure commit signing key? (Current: ${existing.signingKey || "none"})`,
+      initialValue: !!existing.signingKey,
+    });
+
+    if (editKey) {
+      newSigningKey = await promptText({
+        message: "Signing key (SSH public key or GPG Key ID):",
+        defaultValue: existing.signingKey || "",
+      });
+    } else {
+      newSigningKey = null;
+    }
+
+    newDefault = await promptConfirm({
+      message: "Set as global default identity?",
+      initialValue: existing.isDefault,
+    });
+  }
+
+  const updated = store.updateIdentity(id, {
+    name: newName !== undefined ? newName.trim() : existing.name,
+    email: newEmail !== undefined ? newEmail.trim() : existing.email,
+    signingKey: newSigningKey !== undefined ? (newSigningKey ? newSigningKey.trim() : null) : existing.signingKey,
+    isDefault: newDefault !== undefined ? newDefault : existing.isDefault,
+  });
+
+  const generator = new GitConfigGenerator(store);
+  generator.generate();
+
+  logger.success(`Identity '${updated.id}' updated successfully!`);
+  console.log(pc.gray(`  Name:  ${updated.name}`));
+  console.log(pc.gray(`  Email: ${updated.email}`));
+  if (updated.isDefault) {
+    console.log(pc.green("  Active global default identity."));
+  }
+}
+
 export async function handleIdentityRemove(id: string, store: ConfigStore = defaultConfigStore) {
   const removed = store.removeIdentity(id);
   if (!removed) {
@@ -125,3 +213,4 @@ export async function handleIdentityRemove(id: string, store: ConfigStore = defa
 
   logger.success(`Removed identity '${id}'.`);
 }
+

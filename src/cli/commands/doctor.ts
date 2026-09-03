@@ -9,6 +9,7 @@ import { IdeSyncManager } from "@/core/ide/ide-sync-manager";
 import { SshKeyDetector } from "@/core/ssh/ssh-key-detector";
 import { StoreFactory } from "@/core/storage/store-factory";
 import { defaultProviderRegistry } from "@/core/providers/provider-registry";
+import { IdentityResolver } from "@/core/identity/identity-resolver";
 import { getPlatform } from "@/utils/platform";
 
 export async function handleDoctorCommand(store: ConfigStore = defaultConfigStore) {
@@ -103,6 +104,25 @@ export async function handleDoctorCommand(store: ConfigStore = defaultConfigStor
       spinner.succeed(`    ${pc.green("✔")} ${provider.name}: API reachable (${health.pingMs}ms)`);
     } else {
       spinner.warn(`    ${pc.yellow("⚠")} ${provider.name}: ${health.error || "Unreachable"}`);
+    }
+  }
+
+  // 6. Active Repository & Identity Consistency
+  const resolver = new IdentityResolver(store);
+  const ctx = await resolver.resolve();
+  if (ctx.isGitRepo) {
+    console.log(pc.bold("\n  6. Repository & Identity Consistency"));
+    console.log(`     ${pc.green("✔")} Repository:        ${pc.cyan(ctx.repoRoot ? ctx.repoRoot.split("/").pop() || "repo" : "unknown")}`);
+    if (ctx.detectedRemoteProvider) {
+      console.log(`     ${pc.green("✔")} Remote Provider:   ${pc.cyan(ctx.detectedRemoteProvider.name)} (${ctx.detectedRemoteProvider.host})`);
+    }
+    if (ctx.identity) {
+      console.log(`     ${pc.green("✔")} Resolved Identity: ${pc.bold(ctx.identity.name)} <${pc.green(ctx.identity.email)}>`);
+    }
+    if (ctx.isMismatched) {
+      console.log(`     ${pc.red("✖")} Consistency Check:  ${pc.red(`Local git email '${ctx.localGitEmail}' mismatches expected '${ctx.identity?.email}'`)}`);
+    } else {
+      console.log(`     ${pc.green("✔")} Consistency Check:  ${pc.green("Identity matches repository configuration")}`);
     }
   }
 

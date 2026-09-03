@@ -86,6 +86,14 @@ _gitbridge_completions() {
       COMPREPLY=( $(compgen -W "\${ids}" -- "\${cur}") )
       return 0
       ;;
+    identity|id)
+      COMPREPLY=( $(compgen -W "list ls add use edit remove rm" -- "\${cur}") )
+      return 0
+      ;;
+    account|acc)
+      COMPREPLY=( $(compgen -W "list ls add use remove rm" -- "\${cur}") )
+      return 0
+      ;;
     provider|prov)
       COMPREPLY=( $(compgen -W "list ls enable disable add" -- "\${cur}") )
       return 0

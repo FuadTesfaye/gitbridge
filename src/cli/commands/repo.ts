@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs";
 import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { GitCli } from "@/core/git/git-cli";
 import { IdentityGuard } from "@/core/safety/identity-guard";
@@ -100,7 +101,7 @@ export async function handleRepoInit(store: ConfigStore = defaultConfigStore) {
     await guard.installPreCommitHook(repoRoot);
   }
 
-  // 4. Save Repository Profile
+  // 4. Save Repository Profile in repos.json
   store.saveRepositoryProfile({
     path: repoRoot,
     identityId: selectedIdentityId,
@@ -108,8 +109,31 @@ export async function handleRepoInit(store: ConfigStore = defaultConfigStore) {
     safetyHookInstalled: installHook,
   });
 
-  logger.success(`Repository '${repoName}' initialized with GitBridge!`);
-  console.log(pc.gray(`  Identity: ${identity.name} <${identity.email}>`));
-  console.log(pc.gray(`  Pre-commit guard: ${installHook ? pc.green("installed") : pc.gray("skipped")}`));
-  console.log(pc.green("\nYou can now make commits and push normally with native Git!\n"));
+  // 5. Save Local Repository Override (.git/gitbridge.json)
+  const primaryRemote = repositoryRemotes[0];
+  const gitDir = path.join(repoRoot, ".git");
+  if (fs.existsSync(gitDir)) {
+    const localConfigPath = path.join(gitDir, "gitbridge.json");
+    const localData = {
+      profile: selectedIdentityId,
+      identityId: selectedIdentityId,
+      providerId: primaryRemote?.providerId,
+      accountId: primaryRemote?.accountId,
+    };
+    fs.writeFileSync(localConfigPath, JSON.stringify(localData, null, 2), "utf-8");
+  }
+
+  console.log(pc.bold("\n  GITBRIDGE REPOSITORY CONTEXT CONFIGURED"));
+  console.log("  ──────────────────────────────────────────────────");
+  console.log(`  Repository:   ${pc.cyan(repoName)}`);
+  if (primaryRemote) {
+    console.log(`  Remote:       ${primaryRemote.name} → ${pc.gray(primaryRemote.url)}`);
+    console.log(`  Provider:     ${pc.green(primaryRemote.providerId.toUpperCase())}`);
+    if (primaryRemote.accountId) {
+      console.log(`  Account:      ${pc.magenta(primaryRemote.accountId)}`);
+    }
+  }
+  console.log(`  Identity:     ${pc.bold(identity.name)} <${pc.green(identity.email)}>`);
+  console.log(`  Safety Guard: ${installHook ? pc.green("✔ Installed in .git/hooks/pre-commit") : pc.gray("Skipped")}`);
+  console.log(pc.green("\n  You can now make commits and push normally with native Git!\n"));
 }

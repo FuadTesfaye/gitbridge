@@ -55,7 +55,7 @@ export function formatRootHelp(programName: string = "gitbridge"): string {
   ];
 
   return `
-  ${pc.bold(pc.cyan("GitBridge 🌉"))} ${pc.gray("(v0.2.1)")}
+  ${pc.bold(pc.cyan("GitBridge 🌉"))} ${pc.gray("(v0.2.2)")}
   ${pc.gray("Universal Git Identity & Multi-Account Management Layer")}
 
   ${header("USAGE")}

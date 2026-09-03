@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import { handleStatusCommand } from "./commands/status";
 import { handleEnableCommand, handleDisableCommand } from "./commands/enable";
-import { handleIdentityList, handleIdentityAdd, handleIdentityUse, handleIdentityRemove } from "./commands/identity";
-import { handleAccountList, handleAccountRemove } from "./commands/account";
+import { handleIdentityList, handleIdentityAdd, handleIdentityUse, handleIdentityEdit, handleIdentityRemove } from "./commands/identity";
+import { handleAccountList, handleAccountAdd, handleAccountUse, handleAccountRemove } from "./commands/account";
 import { handleAuthLogin, handleAuthLogout } from "./commands/auth";
 import {
   handleProviderList,
@@ -45,7 +45,7 @@ export function createProgram(name = "gitbridge"): Command {
   program
     .name(name)
     .description("Universal Git Identity & Multi-Account Management Layer")
-    .version("0.2.1");
+    .version("0.2.2");
 
   configureProgramHelp(program, name);
 
@@ -185,6 +185,14 @@ export function createProgram(name = "gitbridge"): Command {
     .option("--default", "Set as global default identity")
     .action((opts) => handleIdentityAdd(opts));
   identityCmd.command("use <id>").description("Set global default Git identity").action((id) => handleIdentityUse(id));
+  identityCmd
+    .command("edit [id]")
+    .description("Edit an existing Git identity (name, email, signing key)")
+    .option("--name <name>", "Full name for Git commits")
+    .option("--email <email>", "Email address for Git commits")
+    .option("--signing-key <key>", "SSH/GPG commit signing key")
+    .option("--default", "Set as global default identity")
+    .action((id, opts) => handleIdentityEdit(id, opts));
   identityCmd.command("remove <id>").alias("rm").description("Remove an identity").action((id) => handleIdentityRemove(id));
 
   // Account Subcommands
@@ -194,6 +202,20 @@ export function createProgram(name = "gitbridge"): Command {
     .description("Manage authenticated provider accounts");
   
   accountCmd.command("list").alias("ls").description("List logged-in provider accounts").action(() => handleAccountList());
+  accountCmd
+    .command("add")
+    .description("Add and authenticate a new Git provider account")
+    .option("-p, --provider <provider>", "Git provider (github, gitlab, bitbucket)")
+    .option("-t, --token <token>", "Personal Access Token")
+    .option("-u, --username <user>", "Username / Email for basic/password auth")
+    .option("-P, --password <pass>", "Password for basic/password auth")
+    .option("--host <host>", "Custom host")
+    .option("--ssh-key <path>", "SSH key path")
+    .action((opts) => handleAccountAdd(opts));
+  accountCmd
+    .command("use <providerOrAccount> [accountId]")
+    .description("Set default provider account")
+    .action((providerOrAccount, accountId) => handleAccountUse(providerOrAccount, accountId));
   accountCmd.command("remove <id>").alias("rm").description("Remove an account and erase credentials").action((id) => handleAccountRemove(id));
 
   // Auth Subcommands

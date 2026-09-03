@@ -55,45 +55,74 @@ export async function handleContextCommand(options: ContextCommandOptions = {}, 
     return;
   }
 
-  console.log(pc.bold("\n  GITBRIDGE CONTEXT"));
+  console.log(pc.bold("\n  GitBridge Context"));
   console.log("  ──────────────────────────────────────────────────");
 
+  // 1. Repository
   if (ctx.isGitRepo) {
     const repoName = ctx.repoRoot ? path.basename(ctx.repoRoot) : "unknown";
-    console.log(`  Repository:             ${pc.cyan(repoName)} (${ctx.repoRoot})`);
+    console.log(pc.bold("\n  Repository"));
+    console.log(`    ${pc.cyan(repoName)} ${pc.gray(`(${ctx.repoRoot})`)}`);
   } else {
-    console.log(`  Directory:              ${pc.blue(ctx.cwd)} ${pc.gray("(not a git repo)")}`);
+    console.log(pc.bold("\n  Directory"));
+    console.log(`    ${pc.blue(ctx.cwd)} ${pc.gray("(not a git repository)")}`);
   }
 
-  console.log(`  Resolution Source:      ${formatBadge(ctx.source.toUpperCase(), "cyan")}`);
-
-  if (ctx.identity) {
-    console.log(`  Resolved Identity:      ${pc.green(ctx.identity.name)} <${pc.green(ctx.identity.email)}>`);
-    if (ctx.identity.signingKey) {
-      console.log(`  Signing Key:            ${pc.yellow(ctx.identity.signingKey)}`);
-    }
-  } else {
-    console.log(`  Resolved Identity:      ${pc.yellow("None configured")}`);
+  // 2. Remote
+  if (ctx.isGitRepo && ctx.remotes.length > 0) {
+    const primary = ctx.remotes[0];
+    const remoteUrl = primary.fetchUrl || primary.pushUrl;
+    console.log(pc.bold("\n  Remote"));
+    console.log(`    ${pc.cyan(primary.name)} → ${pc.gray(remoteUrl)}`);
   }
 
-  if (ctx.isGitRepo) {
-    console.log(`  Local Git Email:        ${ctx.localGitEmail ? pc.cyan(ctx.localGitEmail) : pc.gray("not set in .git/config")}`);
-    if (ctx.isMismatched) {
-      console.log(
-        pc.red(`  ⚠ WARNING:              Local git email '${ctx.localGitEmail}' does not match resolved identity '${ctx.identity?.email}'!`)
-      );
-    }
+  // 3. Provider
+  if (ctx.detectedRemoteProvider) {
+    console.log(pc.bold("\n  Provider"));
+    console.log(`    ${pc.green(ctx.detectedRemoteProvider.name)} ${pc.gray(`(${ctx.detectedRemoteProvider.host})`)}`);
+  } else if (ctx.account) {
+    console.log(pc.bold("\n  Provider"));
+    console.log(`    ${pc.green(ctx.account.providerId.toUpperCase())} ${pc.gray(`(${ctx.account.host})`)}`);
   }
 
+  // 4. Account
   if (ctx.account) {
-    console.log(`  Target Account:         ${pc.magenta(ctx.account.providerId.toUpperCase())} (${ctx.account.username})`);
-    if (ctx.account.sshKeyPath) {
-      console.log(`  SSH Key:                ${pc.yellow(ctx.account.sshKeyPath)}`);
-    }
+    console.log(pc.bold("\n  Account"));
+    console.log(`    ${pc.magenta(ctx.account.id)} ${pc.gray(`(${ctx.account.username})`)}`);
   }
 
+  // 5. Identity
+  console.log(pc.bold("\n  Identity"));
+  if (ctx.identity) {
+    const defaultTag = ctx.identity.isDefault ? pc.gray(" [default]") : "";
+    console.log(`    ${pc.bold(ctx.identity.name)} <${pc.green(ctx.identity.email)}> ${pc.cyan(`(${ctx.identity.id})`)}${defaultTag}`);
+    if (ctx.identity.signingKey) {
+      console.log(`    ${pc.gray("Signing Key:")} ${pc.yellow(ctx.identity.signingKey)}`);
+    }
+  } else {
+    console.log(`    ${pc.yellow("No identity configured")}`);
+  }
+
+  // 6. SSH
+  if (ctx.account?.sshKeyPath) {
+    console.log(pc.bold("\n  SSH"));
+    console.log(`    ${pc.yellow(ctx.account.sshKeyPath)}`);
+  }
+
+  // 7. Matched Rule & Resolution
   if (ctx.matchedRule) {
-    console.log(`  Matched Rule:           ${pc.blue(ctx.matchedRule.id)} (${ctx.matchedRule.path})`);
+    console.log(pc.bold("\n  Matched Rule"));
+    console.log(`    ${pc.blue(ctx.matchedRule.path)} ${pc.gray(`(${ctx.matchedRule.id})`)}`);
+  }
+
+  // 8. Status & Safety Check
+  console.log(pc.bold("\n  Status"));
+  if (ctx.isMismatched) {
+    console.log(pc.red(`    ✖ Mismatched! Local git email '${ctx.localGitEmail}' does not match expected '${ctx.identity?.email}'`));
+  } else if (ctx.identity) {
+    console.log(`    ${pc.green("✔ Correct")} ${pc.gray(`(via ${ctx.source})`)}`);
+  } else {
+    console.log(`    ${pc.yellow("○ Unconfigured")}`);
   }
 
   if (ctx.detectedRemoteProvider && !ctx.detectedRemoteProvider.isConfigured) {
@@ -103,8 +132,8 @@ export async function handleContextCommand(options: ContextCommandOptions = {}, 
     console.log(pc.gray(`     Run 'gb auth login ${ctx.detectedRemoteProvider.id}' to connect this provider account.`));
   }
 
-  if (ctx.isGitRepo && ctx.remotes.length > 0) {
-    console.log("\n  " + pc.bold("Configured Remotes:"));
+  if (ctx.isGitRepo && ctx.remotes.length > 1) {
+    console.log("\n  " + pc.bold("All Configured Remotes:"));
     console.log(renderRemotesTable(ctx.remotes));
   } else {
     console.log("");
