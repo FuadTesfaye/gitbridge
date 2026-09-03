@@ -12,6 +12,10 @@ import {
 } from "./commands/provider";
 import { handleExplainCommand } from "./commands/explain";
 import { handleEnvCommand } from "./commands/env";
+import { handleCurrentCommand } from "./commands/current";
+import { handleCloneCommand } from "./commands/clone";
+import { handleSshList, handleSshGenerate, handleSshLink } from "./commands/ssh";
+import { handleCompletionCommand } from "./commands/completion";
 import { handleRuleList, handleRuleAdd, handleRuleRemove } from "./commands/rule";
 import { handleRepoInit } from "./commands/repo";
 import { handleContextCommand } from "./commands/context";
@@ -75,6 +79,25 @@ export function createProgram(name = "gitbridge"): Command {
     .command("env")
     .description("Print shell environment exports for current repository")
     .action(() => handleEnvCommand());
+
+  program
+    .command("current")
+    .alias("cur")
+    .description("Print current Git author identity, email, or prompt badge")
+    .option("-p, --prompt", "Output compact badge for shell prompt")
+    .option("--email", "Output resolved email only")
+    .option("--name", "Output resolved name only")
+    .option("--account", "Output target account username only")
+    .option("--provider", "Output detected provider only")
+    .action((opts) => handleCurrentCommand(opts));
+
+  program
+    .command("clone <url> [destination]")
+    .description("Smart clone with provider detection, account selection, and identity setup")
+    .option("--profile <profile>", "Identity profile to assign")
+    .option("--identity <id>", "Identity ID to assign")
+    .option("--account <account>", "Account ID to route clone through")
+    .action((url, dest, opts) => handleCloneCommand(url, dest, opts));
 
   // Enable / Disable
   program
@@ -244,6 +267,30 @@ export function createProgram(name = "gitbridge"): Command {
     .alias("doc")
     .description("Run comprehensive health and diagnostic checks")
     .action(() => handleDoctorCommand());
+
+  // SSH Subcommands
+  const sshCmd = program
+    .command("ssh")
+    .description("Inspect and manage SSH keys and account routing");
+  
+  sshCmd.command("list").alias("ls").description("List discovered SSH keys and linked accounts").action(() => handleSshList());
+  sshCmd
+    .command("generate")
+    .alias("gen")
+    .description("Generate a new ed25519 SSH key and optionally link to an account")
+    .option("-n, --name <name>", "Key filename in ~/.ssh")
+    .option("-e, --email <email>", "Comment/email for key")
+    .action((opts) => handleSshGenerate(opts));
+  sshCmd
+    .command("link [keyPath] [accountId]")
+    .description("Link an existing SSH key to a provider account")
+    .action((k, a) => handleSshLink(k, a));
+
+  // Shell Completion Generator
+  program
+    .command("completion [shell]")
+    .description("Generate shell autocompletion script (bash, zsh, fish)")
+    .action((sh) => handleCompletionCommand(sh));
 
   // Credential Helper (Invoked by Git CLI)
   const credCmd = program.command("credential").description("Git credential helper bridge (invoked by git)");

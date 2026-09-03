@@ -85,6 +85,16 @@ export const ProviderConfigSchema = z.object({
 });
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 
+// Custom Provider definition
+export const CustomProviderSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  host: z.string().min(1),
+  type: GitProviderTypeSchema.default("custom"),
+  apiBaseUrl: z.string().url().optional(),
+});
+export type CustomProvider = z.infer<typeof CustomProviderSchema>;
+
 // Main Configuration
 export const MainConfigSchema = z.object({
   $schema: z.string().optional(),
@@ -95,6 +105,7 @@ export const MainConfigSchema = z.object({
   providers: z
     .record(z.string(), ProviderConfigSchema)
     .default({ github: { enabled: true } }),
+  customProviders: z.array(CustomProviderSchema).default([]),
   rules: z.array(DirectoryRuleSchema).default([]),
   settings: GitBridgeSettingsSchema.default({}),
 });
@@ -125,16 +136,6 @@ export const RepositoriesFileSchema = z.object({
   repositories: z.array(RepositoryProfileSchema).default([]),
 });
 export type RepositoriesFile = z.infer<typeof RepositoriesFileSchema>;
-
-// Custom Provider definition
-export const CustomProviderSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  host: z.string().min(1),
-  type: GitProviderTypeSchema.default("custom"),
-  apiBaseUrl: z.string().url().optional(),
-});
-export type CustomProvider = z.infer<typeof CustomProviderSchema>;
 
 // Local Repository Override (.git/gitbridge.json)
 export const LocalRepoConfigSchema = z.object({
