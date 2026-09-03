@@ -32,6 +32,9 @@ export class SshConfigGenerator {
         content += `Host ${hostAlias}\n`;
         content += `    HostName ${account.host}\n`;
         content += `    User git\n`;
+        if (account.sshPort) {
+          content += `    Port ${account.sshPort}\n`;
+        }
         content += `    IdentityFile ${keyPath}\n`;
         content += `    IdentitiesOnly yes\n\n`;
       }

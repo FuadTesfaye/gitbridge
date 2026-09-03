@@ -45,6 +45,7 @@ export const ProviderAccountSchema = z.object({
   displayName: z.string().optional(),
   authType: AuthTypeSchema,
   sshKeyPath: z.string().optional(),
+  sshPort: z.number().optional(),
   createdAt: z.string().datetime().optional().default(() => new Date().toISOString()),
 });
 export type ProviderAccount = z.infer<typeof ProviderAccountSchema>;

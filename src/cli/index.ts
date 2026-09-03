@@ -45,7 +45,7 @@ export function createProgram(name = "gitbridge"): Command {
   program
     .name(name)
     .description("Universal Git Identity & Multi-Account Management Layer")
-    .version("0.2.2");
+    .version("0.2.3");
 
   configureProgramHelp(program, name);
 
