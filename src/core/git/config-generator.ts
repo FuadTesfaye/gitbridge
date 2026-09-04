@@ -44,9 +44,12 @@ export class GitConfigGenerator {
         const account = accounts.find((a) => a.id === rule.defaultAccountId);
         if (account && account.host) {
           const aliasHost = `${account.host}-${account.id}`;
-          // e.g. insteadOf = git@github.com:
           ruleContent += `\n[url "git@${aliasHost}:"]\n`;
           ruleContent += `    insteadOf = git@${account.host}:\n`;
+          if (account.sshPort && account.sshPort !== 22) {
+            ruleContent += `    insteadOf = ssh://git@${account.host}:${account.sshPort}/\n`;
+          }
+          ruleContent += `    insteadOf = ssh://git@${account.host}/\n`;
         }
       }
 

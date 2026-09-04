@@ -6,6 +6,7 @@ import { ConfigStore, defaultConfigStore } from "../config/config-store";
 import { GitOverrideManager } from "./override-manager";
 import { IdentityResolver } from "../identity/identity-resolver";
 import { IdentityGuard } from "../safety/identity-guard";
+import { GitCli } from "./git-cli";
 import { logger } from "@/utils/logger";
 
 export interface ProxyExecutionResult {
@@ -94,18 +95,38 @@ export class GitProxy {
 
     // 2. Discover real git binary
     const realGit = this.overrideManager.findRealGitPath() || (process.platform === "win32" ? "git.exe" : "/usr/bin/git");
-    const { cwd, subcommand } = this.parseGitArgs(args);
+    const { cwd, subcommand, subcmdIndex } = this.parseGitArgs(args);
+
+    const isEnabled = this.store.isOverrideEnabled();
+
+    // If override is disabled, immediately spawn real git with zero modification
+    if (!isEnabled) {
+      try {
+        const result = child_process.spawnSync(realGit, args, {
+          cwd,
+          stdio: "inherit",
+          env: {
+            ...process.env,
+            GITBRIDGE_OVERRIDE_BYPASS: "1",
+            GITBRIDGE_REAL_GIT: realGit,
+          },
+        });
+        return result.status ?? 0;
+      } catch (err: unknown) {
+        console.error(pc.red(`Git execution error: ${err instanceof Error ? err.message : String(err)}`));
+        return 1;
+      }
+    }
 
     const injectedEnv: Record<string, string> = {
       GITBRIDGE_OVERRIDE_BYPASS: "1",
       GITBRIDGE_REAL_GIT: realGit,
     };
 
-    const isEnabled = this.store.isOverrideEnabled();
     const config = this.store.loadConfig();
 
     // 3. If override is enabled, inject context
-    if (isEnabled && subcommand) {
+    if (subcommand) {
       const commitCommands = ["commit", "merge", "rebase", "cherry-pick", "am"];
       const networkCommands = ["push", "pull", "fetch", "clone", "ls-remote"];
 
@@ -145,6 +166,7 @@ export class GitProxy {
     }
 
     // 4. Spawn real git binary with inherited stdio
+    let exitCode = 0;
     try {
       const result = child_process.spawnSync(realGit, args, {
         cwd,
@@ -160,10 +182,63 @@ export class GitProxy {
         return 1;
       }
 
-      return result.status ?? 0;
+      exitCode = result.status ?? 0;
     } catch (err: unknown) {
       console.error(pc.red(`Git execution error: ${err instanceof Error ? err.message : String(err)}`));
       return 1;
     }
+
+    // 5. Post-init & post-clone auto-configuration for newly initialized repositories
+    if (exitCode === 0 && (subcommand === "init" || subcommand === "clone")) {
+      try {
+        let repoTarget = cwd;
+        if (subcommand === "clone" && subcmdIndex >= 0) {
+          const nonOptions = args.slice(subcmdIndex + 1).filter((a) => !a.startsWith("-"));
+          if (nonOptions[1]) {
+            repoTarget = path.resolve(cwd, nonOptions[1]);
+          } else if (nonOptions[0]) {
+            const dirName = path.basename(nonOptions[0]).replace(/\.git$/, "");
+            repoTarget = path.resolve(cwd, dirName);
+          }
+        }
+
+        const gitTarget = new GitCli(repoTarget);
+        if (await gitTarget.isGitRepo()) {
+          const root = (await gitTarget.getRepoRoot()) || repoTarget;
+          const ctx = await this.resolver.resolve(root);
+
+          if (ctx.matchedRule && ctx.identity) {
+            const gitDir = path.join(root, ".git");
+            if (fs.existsSync(gitDir)) {
+              const localConfigPath = path.join(gitDir, "gitbridge.json");
+              if (!fs.existsSync(localConfigPath)) {
+                fs.writeFileSync(
+                  localConfigPath,
+                  JSON.stringify(
+                    {
+                      profile: ctx.identity.id,
+                      identityId: ctx.identity.id,
+                      providerId: ctx.matchedRule.defaultProvider,
+                      accountId: ctx.matchedRule.defaultAccountId,
+                    },
+                    null,
+                    2
+                  ),
+                  { encoding: "utf-8", mode: 0o600 }
+                );
+              }
+
+              // Auto-install safety hooks
+              await this.guard.installPreCommitHook(root);
+              await this.guard.installPrePushHook(root);
+            }
+          }
+        }
+      } catch {
+        // Fall through gracefully
+      }
+    }
+
+    return exitCode;
   }
 }

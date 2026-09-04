@@ -22,7 +22,7 @@ function renderRow(row: HelpRow, width: number = 24): string {
   return `    ${colored}${spaces}${pc.white(row.desc)}`;
 }
 
-export function formatRootHelp(programName: string = "gitbridge"): string {
+export function formatRootHelp(programName: string = "gitbridge", version: string = "0.2.5"): string {
   const isGb = programName === "gb";
   const header = (title: string) => pc.bold(pc.yellow(title));
 
@@ -57,7 +57,7 @@ export function formatRootHelp(programName: string = "gitbridge"): string {
   ];
 
   return `
-  ${pc.bold(pc.cyan("GitBridge 🌉"))} ${pc.gray("(v0.2.4)")}
+  ${pc.bold(pc.cyan("GitBridge 🌉"))} ${pc.gray(`(v${version})`)}
   ${pc.gray("Universal Git Identity & Multi-Account Management Layer")}
 
   ${header("USAGE")}
@@ -94,7 +94,7 @@ ${management.map((m) => renderRow(m)).join("\n")}
 export function configureProgramHelp(program: Command, programName: string = "gitbridge"): void {
   // Override root help
   program.helpInformation = function () {
-    return formatRootHelp(programName);
+    return formatRootHelp(programName, program.version());
   };
 
   // Configure custom styling for subcommands

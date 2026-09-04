@@ -31,6 +31,7 @@ export interface CreateAccountInput {
   displayName?: string;
   authType: ProviderAccount["authType"];
   sshKeyPath?: string;
+  sshPort?: number;
 }
 
 export interface SaveRepositoryProfileInput {
@@ -120,11 +121,36 @@ export class ConfigStore {
   }
 
   setOverrideEnabled(overrideEnabled: boolean): MainConfig {
+    const activeFile = this.paths.getOverrideActiveFile();
+    if (overrideEnabled) {
+      this.ensureDirectories();
+      fs.writeFileSync(activeFile, "1\n", "utf-8");
+    } else {
+      if (fs.existsSync(activeFile)) {
+        try {
+          fs.unlinkSync(activeFile);
+        } catch {
+          // ignore error
+        }
+      }
+    }
     return this.updateSettings({ overrideEnabled });
   }
 
   isOverrideEnabled(): boolean {
-    return this.loadConfig().settings.overrideEnabled ?? false;
+    const fromConfig = this.loadConfig().settings.overrideEnabled ?? false;
+    if (!fromConfig) {
+      const activeFile = this.paths.getOverrideActiveFile();
+      if (fs.existsSync(activeFile)) {
+        try {
+          fs.unlinkSync(activeFile);
+        } catch {
+          // ignore error
+        }
+      }
+      return false;
+    }
+    return true;
   }
 
   getRealGitPath(): string | null {

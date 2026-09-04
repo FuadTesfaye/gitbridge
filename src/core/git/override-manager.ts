@@ -126,6 +126,12 @@ if [ "$GITBRIDGE_OVERRIDE_BYPASS" = "1" ]; then
     exec "$REAL_GIT" "$@"
 fi
 
+GB_CONFIG_DIR="\${GITBRIDGE_HOME:-$HOME/.gitbridge}"
+if [ ! -f "$GB_CONFIG_DIR/override.active" ]; then
+    REAL_GIT="\${GITBRIDGE_REAL_GIT:-${realGit}}"
+    exec "$REAL_GIT" "$@"
+fi
+
 GB_BIN=""
 if command -v gitbridge >/dev/null 2>&1; then
     GB_BIN="gitbridge"
@@ -156,6 +162,10 @@ fi
     const cmdShimContent = `@echo off
 rem GitBridge Git Override Shim for Windows CMD
 if "%GITBRIDGE_OVERRIDE_BYPASS%"=="1" goto bypass
+
+set "GB_CONFIG_DIR=%GITBRIDGE_HOME%"
+if "%GB_CONFIG_DIR%"=="" set "GB_CONFIG_DIR=%USERPROFILE%\\.gitbridge"
+if not exist "%GB_CONFIG_DIR%\\override.active" goto bypass
 
 where gitbridge >nul 2>&1
 if %ERRORLEVEL% equ 0 (
@@ -190,8 +200,15 @@ git.exe %*
     const psShimContent = `# GitBridge Git Override Shim for PowerShell
 param([Parameter(ValueFromRemainingArguments = $true)]$args)
 
+$realGit = if ($env:GITBRIDGE_REAL_GIT) { $env:GITBRIDGE_REAL_GIT } else { "${realGit}" }
+
 if ($env:GITBRIDGE_OVERRIDE_BYPASS -eq "1") {
-    $realGit = if ($env:GITBRIDGE_REAL_GIT) { $env:GITBRIDGE_REAL_GIT } else { "${realGit}" }
+    & $realGit @args
+    exit $LASTEXITCODE
+}
+
+$configDir = if ($env:GITBRIDGE_HOME) { $env:GITBRIDGE_HOME } else { "$HOME/.gitbridge" }
+if (-not (Test-Path "$configDir/override.active")) {
     & $realGit @args
     exit $LASTEXITCODE
 }
@@ -203,7 +220,6 @@ if (Get-Command gitbridge -ErrorAction SilentlyContinue) {
     & gb git-proxy @args
     exit $LASTEXITCODE
 } else {
-    $realGit = if ($env:GITBRIDGE_REAL_GIT) { $env:GITBRIDGE_REAL_GIT } else { "${realGit}" }
     & $realGit @args
     exit $LASTEXITCODE
 }
@@ -218,6 +234,14 @@ if (Get-Command gitbridge -ErrorAction SilentlyContinue) {
    */
   uninstallShims(): boolean {
     const shimsDir = this.store.getPathResolver().getShimsDir();
+    const activeFile = this.store.getPathResolver().getOverrideActiveFile();
+    if (fs.existsSync(activeFile)) {
+      try {
+        fs.unlinkSync(activeFile);
+      } catch {
+        // ignore error
+      }
+    }
     if (!fs.existsSync(shimsDir)) return true;
 
     const shimFiles = ["git", "git.cmd", "git.bat", "git.ps1"];

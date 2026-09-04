@@ -7,6 +7,7 @@ import { logger } from "@/utils/logger";
 import { formatBadge } from "../ui/banners";
 
 export async function handleIdeSyncCommand(store: ConfigStore = defaultConfigStore) {
+  store.setOverrideEnabled(true);
   const overrideManager = new GitOverrideManager(store);
   overrideManager.installShims();
 

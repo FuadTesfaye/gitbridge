@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { GitCli } from "@/core/git/git-cli";
 import { IdentityGuard } from "@/core/safety/identity-guard";
+import { IdentityResolver } from "@/core/identity/identity-resolver";
 import { promptSelect, promptConfirm } from "../ui/prompts";
 import { logger } from "@/utils/logger";
 import pc from "picocolors";
@@ -50,18 +51,27 @@ export async function handleRepoSet(
   }
 
   if (!identity) {
-    if (options.identity || options.email) {
-      logger.warn(`Could not find configured identity for '${options.identity || options.email}'.`);
-    }
+    // Check if directory matches an active Directory Rule
+    const resolver = new IdentityResolver(store);
+    const matchedCtx = await resolver.resolve(repoRoot);
 
-    const selectedId = await promptSelect({
-      message: `Select Git identity to bind permanently to ${pc.cyan(repoName)}:`,
-      options: identities.map((i) => ({
-        value: i.id,
-        label: `${i.id} (${i.name} <${i.email}>)`,
-      })),
-    });
-    identity = store.getIdentity(selectedId)!;
+    if (matchedCtx.matchedRule && matchedCtx.identity && !options.identity && !options.email) {
+      identity = matchedCtx.identity;
+      console.log(`  Auto-Selected from Directory Rule (${matchedCtx.matchedRule.id}): ${pc.bold(identity.name)} <${pc.green(identity.email)}>`);
+    } else {
+      if (options.identity || options.email) {
+        logger.warn(`Could not find configured identity for '${options.identity || options.email}'.`);
+      }
+
+      const selectedId = await promptSelect({
+        message: `Select Git identity to bind permanently to ${pc.cyan(repoName)}:`,
+        options: identities.map((i) => ({
+          value: i.id,
+          label: `${i.id} (${i.name} <${i.email}>)`,
+        })),
+      });
+      identity = store.getIdentity(selectedId)!;
+    }
   }
 
   // 2. Resolve Provider & Account

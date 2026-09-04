@@ -73,5 +73,41 @@ describe("Git Override End-to-End Integration", () => {
     overrideManager.disable();
     expect(store.isOverrideEnabled()).toBe(false);
     expect(overrideManager.getOverrideStatus().shimsInstalled).toBe(false);
+    expect(fs.existsSync(store.getPathResolver().getOverrideActiveFile())).toBe(false);
+
+    // 8. Commit while override is disabled should NOT inject identity, using native git config
+    fs.writeFileSync(readmePath, "# Work API\nNative commit without GitBridge injection\n");
+    await git.exec(["add", "README.md"]);
+    const exitCodeDisabled = await proxy.execute(["-C", workDir, "commit", "-m", "feat: second native commit"]);
+    expect(exitCodeDisabled).toBe(0);
+
+    const secondLog = await git.exec(["log", "-1", "--format=%an <%ae>"]);
+    // Since override is disabled, it preserved the local git repo's native author!
+    expect(secondLog.stdout).toBe("Initial Name <initial@domain.com>");
+  });
+
+  it("shim script directly executes real git when override is inactive", async () => {
+    // 1. Install shim with override disabled
+    const realGit = overrideManager.findRealGitPath() || "/usr/bin/git";
+    overrideManager.installShims(realGit);
+    const shimPath = store.getPathResolver().getGitShimPath();
+    expect(fs.existsSync(shimPath)).toBe(true);
+    expect(store.isOverrideEnabled()).toBe(false);
+    expect(fs.existsSync(store.getPathResolver().getOverrideActiveFile())).toBe(false);
+
+    // 2. Invoking the shim directly when override.active does NOT exist must run real git immediately
+    const res = Bun.spawnSync([shimPath, "config", "user.name"], {
+      cwd: workDir,
+      env: {
+        ...process.env,
+        GITBRIDGE_HOME: store.getPathResolver().getBaseDir(),
+      },
+    });
+    expect(res.exitCode).toBe(0);
+    expect(res.stdout.toString().trim()).toBe("Initial Name");
+
+    // 3. Uninstalling shims cleans up all files
+    overrideManager.uninstallShims();
+    expect(fs.existsSync(shimPath)).toBe(false);
   });
 });

@@ -73,6 +73,10 @@ export class PathResolver {
     return path.join(this.baseDir, "vault.enc");
   }
 
+  getOverrideActiveFile(): string {
+    return path.join(this.baseDir, "override.active");
+  }
+
   getUserGitConfigFile(): string {
     return path.join(getHomeDir(), ".gitconfig");
   }

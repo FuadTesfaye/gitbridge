@@ -6,11 +6,13 @@ import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { ProviderDetector } from "@/core/providers/provider-detector";
 import { defaultProviderRegistry } from "@/core/providers/provider-registry";
 import { IdentityGuard } from "@/core/safety/identity-guard";
+import { IdentityResolver } from "@/core/identity/identity-resolver";
+import { GitCli } from "@/core/git/git-cli";
 import { execProcess } from "@/utils/proc";
 import { parseRemoteUrl } from "@/core/git/url-parser";
-import { promptSelect, promptConfirm } from "../ui/prompts";
+import { promptSelect } from "../ui/prompts";
 import { logger } from "@/utils/logger";
-import type { GitProviderType } from "@/core/config/schema";
+import type { GitProviderType, RepositoryRemote } from "@/core/config/schema";
 
 export interface CloneCommandOptions {
   profile?: string;
@@ -88,7 +90,33 @@ export async function handleCloneCommand(
   let selectedAccountId: string | undefined = options.account;
   let selectedIdentityId: string | undefined = options.identity || options.profile;
 
-  // Account Selection
+  // Check if target directory matches an active Directory Rule
+  const targetCwd = destination ? path.resolve(process.cwd(), destination) : process.cwd();
+  const resolver = new IdentityResolver(store);
+  const matchedCtx = await resolver.resolve(targetCwd);
+
+  if (matchedCtx.matchedRule) {
+    console.log(pc.bold("\n  DIRECTORY RULE DETECTED"));
+    console.log(`  Matched Rule:           ${pc.green(matchedCtx.matchedRule.id)} (${matchedCtx.matchedRule.path})`);
+
+    if (!selectedIdentityId && matchedCtx.identity) {
+      selectedIdentityId = matchedCtx.identity.id;
+      console.log(`  Auto-Selected Identity: ${pc.bold(matchedCtx.identity.name)} <${pc.green(matchedCtx.identity.email)}>`);
+    }
+
+    if (!selectedAccountId && matchedCtx.matchedRule.defaultAccountId) {
+      selectedAccountId = matchedCtx.matchedRule.defaultAccountId;
+      console.log(`  Auto-Selected Account:  ${pc.magenta(selectedAccountId)}`);
+    } else if (!selectedAccountId && accounts.length > 0) {
+      const matching = accounts.find((a) => a.providerId === detection.providerId);
+      if (matching) {
+        selectedAccountId = matching.id;
+        console.log(`  Auto-Selected Account:  ${pc.magenta(selectedAccountId)}`);
+      }
+    }
+  }
+
+  // Account Selection (only prompt if not determined by rule or flag)
   if (!selectedAccountId && accounts.length > 0) {
     if (accounts.length === 1) {
       selectedAccountId = accounts[0].id;
@@ -104,7 +132,7 @@ export async function handleCloneCommand(
     }
   }
 
-  // Identity Selection
+  // Identity Selection (only prompt if not determined by rule or flag)
   if (!selectedIdentityId && identities.length > 0) {
     if (identities.length === 1) {
       selectedIdentityId = identities[0].id;
@@ -153,7 +181,19 @@ export async function handleCloneCommand(
   const gitDir = path.join(repoAbsPath, ".git");
 
   if (fs.existsSync(gitDir)) {
-    // Write local repository override
+    const chosenIdentity = identities.find((i) => i.id === selectedIdentityId);
+
+    // Set local git config user.name and user.email
+    if (chosenIdentity) {
+      const git = new GitCli(repoAbsPath);
+      await git.setConfig("user.name", chosenIdentity.name, "local");
+      await git.setConfig("user.email", chosenIdentity.email, "local");
+      if (chosenIdentity.signingKey) {
+        await git.setConfig("user.signingkey", chosenIdentity.signingKey, "local");
+      }
+    }
+
+    // Write local repository override (.git/gitbridge.json)
     const localConfigPath = path.join(gitDir, "gitbridge.json");
     const localConfig = {
       profile: selectedIdentityId,
@@ -161,18 +201,38 @@ export async function handleCloneCommand(
       providerId: detection.providerId,
       accountId: selectedAccountId,
     };
-    fs.writeFileSync(localConfigPath, JSON.stringify(localConfig, null, 2), "utf-8");
+    fs.writeFileSync(localConfigPath, JSON.stringify(localConfig, null, 2), { encoding: "utf-8", mode: 0o600 });
 
-    // Install pre-commit safety hook
+    // Save repository profile in repos.json (Tier 2 Global Registry)
+    const remotes: RepositoryRemote[] = [
+      {
+        name: "origin",
+        providerId: detection.providerId,
+        host: detection.host,
+        accountId: selectedAccountId,
+        url: cleanUrl,
+        rawUrl: cleanUrl,
+      },
+    ];
+
+    store.saveRepositoryProfile({
+      path: repoAbsPath,
+      identityId: selectedIdentityId || "default",
+      remotes,
+      safetyHookInstalled: true,
+    });
+
+    // Install pre-commit and pre-push safety hooks
     const guard = new IdentityGuard(store);
     await guard.installPreCommitHook(repoAbsPath);
+    await guard.installPrePushHook(repoAbsPath);
 
-    logger.success("GitBridge context configured for repository!");
-    console.log(pc.gray(`  Location:   ${repoAbsPath}`));
-    console.log(pc.gray(`  Identity:   ${selectedIdentityId || "global default"}`));
+    logger.success("GitBridge context permanently configured for repository!");
+    console.log(pc.gray(`  Location:     ${repoAbsPath}`));
+    console.log(pc.gray(`  Identity:     ${chosenIdentity ? `${chosenIdentity.name} <${chosenIdentity.email}>` : selectedIdentityId || "global default"}`));
     if (selectedAccountId) {
-      console.log(pc.gray(`  Account:    ${selectedAccountId}`));
+      console.log(pc.gray(`  Account:      ${selectedAccountId}`));
     }
-    console.log(pc.green(`  Safety Hook: Installed in .git/hooks/pre-commit\n`));
+    console.log(pc.green(`  Safety Hooks: Active in .git/hooks/ (pre-commit & pre-push)\n`));
   }
 }
