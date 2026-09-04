@@ -16,6 +16,8 @@ When a user asks in plain English (or any language) to perform an action, run th
 
 | User Natural Language Request | Exact GitBridge Command | Description |
 |---|---|---|
+| *"Install GitBridge on Linux or macOS"* | `curl -fsSL https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.sh \| bash` | Universal 1-line installation script |
+| *"Install GitBridge on Windows"* | `irm https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.ps1 \| iex` | Native Windows PowerShell installer |
 | *"Set this repository to use my work email / identity and remember it"* | `gb repo set . -i <identityId>` | Permanently locks the repo to that identity without asking again |
 | *"Set this repo to use GitLab and my company email"* | `gb repo set . -i <id> -p gitlab -a <accountId>` | Binds repo to provider, account, and identity |
 | *"What identity/account is this repo using?"* | `gb context` (`gb ctx`) | Displays complete context breakdown |

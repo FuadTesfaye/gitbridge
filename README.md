@@ -64,13 +64,20 @@ GitBridge supports many platforms, but it **never forces you to configure provid
 
 ## 3. Installation
 
-### Global Installation via npm
+### One-Line Install (Linux & macOS)
 ```bash
-npm install -g @fuad24/gitbridge
+curl -fsSL https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.sh | bash
 ```
 
-### Global Installation via Bun
+### One-Line Install (Windows PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.ps1 | iex
+```
+
+### Global Installation via npm or Bun
 ```bash
+npm install -g @fuad24/gitbridge
+# or
 bun add -g @fuad24/gitbridge
 ```
 
