@@ -36,7 +36,7 @@ When a user asks in plain English (or any language) to perform an action, run th
 | *"Run a security check / audit"* | `gb security check` (`gb sec check`) | Audits permissions, keyrings, remotes, staged secrets |
 | *"Fix my security permissions and install hooks"* | `gb security fix` (`gb sec fix`) | Auto-locks permissions to 0700/0600 & installs hooks |
 | *"Scan this project for leaked secrets"* | `gb security scan [path]` | Deep scans for API tokens, private keys, `.env` files |
-| *"Clone a repo with correct account & identity"* | `gb clone <url>` | Auto-detects provider, matches account, sets identity |
+| *"Clone a repo with correct account & identity"* | `gb clone <url> [-i id] [-a acc] [-e email]` | Auto-detects account access (namespace/API/SSH), sets identity, and remembers forever |
 | *"Run system diagnostics and connectivity tests"* | `gb doctor` (`gb doc`) | Inspects Git CLI, SSH keys, and provider APIs |
 | *"Enable native Git integration"* | `gb enable` | Injects managed blocks into `~/.gitconfig` and `~/.ssh/config` |
 | *"Route native `git` commands through GitBridge"* | `gb override enable` | Installs shims and shell PATH integration |

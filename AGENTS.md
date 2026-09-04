@@ -141,9 +141,9 @@ GitBridge provides dual binaries: `gitbridge` (verbose) and `gb` (fast shorthand
 - `gb st` (`gitbridge status`): Display active identities, accounts, rules, and integration states.
 - `gb ctx` (`gitbridge context`): Inspect identity resolution, active remotes, and mismatch warnings (`--json` for machine output).
 - `gb cur` (`gitbridge current`): Print active author identity (`-p, --prompt` for compact shell prompt badge).
-- `gb explain` (`gitbridge explain`): Decision tree breakdown of WHY an identity was selected across resolution tiers.
+- `gb explain` (`gitbridge explain`): Decision tree breakdown of WHY an identity was selected across 6 resolution tiers.
 - `gb env` (`gitbridge env`): Print shell environment export statements (`GIT_AUTHOR_NAME`, `GIT_SSH_COMMAND`, etc.).
-- `gb clone <url>` (`gitbridge clone`): Smart clone with provider auto-detection, account selection, and identity setup.
+- `gb clone <url> [dir] [-i id] [-a acc] [-e email]` (`gitbridge clone`): Smart clone with automated account access detection (namespace ownership, API token probe, SSH key routing) and persistent repository binding.
 - `gb doc` (`gitbridge doctor`): Run comprehensive diagnostics on Git CLI, keyrings, SSH keys, and provider APIs.
 - `gb completion [bash|zsh|fish]`: Generate shell autocompletion script.
 
