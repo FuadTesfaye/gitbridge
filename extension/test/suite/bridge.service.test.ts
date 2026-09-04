@@ -4,6 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { ConfigStore } from "../../../src/core/config/config-store";
 import { PathResolver } from "../../../src/core/config/path-resolver";
+import { GitCli } from "../../../src/core/git/git-cli";
 import { BridgeService } from "../../src/services/bridge.service";
 
 describe("Extension BridgeService", () => {
@@ -70,5 +71,83 @@ describe("Extension BridgeService", () => {
 
     bridge.disableOverride();
     expect(bridge.getOverrideStatus().enabled).toBe(false);
+  });
+
+  it("manages rules, accounts, providers, and integrations via bridge", async () => {
+    // 1. Rules
+    await bridge.addRule({
+      id: "rule_1",
+      path: path.join(tempDir, "work"),
+      identityId: "work",
+    });
+    expect(bridge.loadRules().length).toBe(1);
+
+    await bridge.removeRule("rule_1");
+    expect(bridge.loadRules().length).toBe(0);
+
+    // 2. Accounts
+    bridge.getStore().addAccount({
+      id: "gh_acc",
+      providerId: "github",
+      host: "github.com",
+      username: "ghuser",
+      authType: "pat",
+    });
+    expect(bridge.loadAccounts().length).toBe(1);
+    await bridge.removeAccount("gh_acc");
+    expect(bridge.loadAccounts().length).toBe(0);
+
+    // 3. Providers
+    const providers = bridge.listProviders();
+    expect(providers.length).toBeGreaterThan(0);
+    expect(providers.some((p) => p.providerId === "github")).toBe(true);
+
+    bridge.enableProvider("gitlab");
+    bridge.disableProvider("gitlab");
+
+    // 4. Injections & status
+    await bridge.enable();
+    await bridge.disable();
+    expect(bridge.isGitInstalled()).toBe(false);
+    expect(bridge.isSshInstalled()).toBe(false);
+
+    // 5. Diagnostics
+    const diag = await bridge.runDiagnostics();
+    expect(diag).toBeDefined();
+    expect(typeof diag).toBe("string");
+    expect(diag).toContain("Git CLI Version");
+
+    // 6. Repositories & Identities
+    expect(bridge.loadRepositories()).toBeDefined();
+    await bridge.removeIdentity("work");
+
+    // 7. Safety Hooks in testRepo
+    const testRepo = path.join(tempDir, "test-repo");
+    fs.mkdirSync(testRepo, { recursive: true });
+    const git = new GitCli(testRepo);
+    await git.exec(["init"]);
+
+    const isInstalled = await bridge.isSafetyHookInstalled(testRepo);
+    expect(isInstalled).toBe(false);
+    const installed = await bridge.installSafetyHook(testRepo);
+    expect(installed).toBe(true);
+    expect(await bridge.isSafetyHookInstalled(testRepo)).toBe(true);
+    await bridge.uninstallSafetyHook(testRepo);
+    expect(await bridge.isSafetyHookInstalled(testRepo)).toBe(false);
+
+    // 8. Fix Email Mismatch
+    const fixNonRepo = await bridge.fixEmailMismatch(tempDir);
+    expect(fixNonRepo.success).toBe(false);
+
+    // 9. GitBridge injection toggle
+    const enabledState = bridge.enableGitBridge();
+    expect(enabledState).toBeDefined();
+    bridge.disableGitBridge();
+
+    // 10. IDE Unsync
+    expect(() => bridge.unsyncIde()).not.toThrow();
+
+    // 11. pushAll error handling
+    expect(bridge.pushAll(testRepo)).rejects.toThrow();
   });
 });

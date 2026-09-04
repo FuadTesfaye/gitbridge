@@ -75,4 +75,16 @@ describe("IdeSyncManager", () => {
     expect(restored["git.path"]).toBeUndefined();
     expect(restored["gitbridge.managed"]).toBeUndefined();
   });
+
+  it("executes syncAll and unsyncAll cleanly without errors", () => {
+    const syncRes = manager.syncAll();
+    expect(syncRes).toBeDefined();
+    expect(Array.isArray(syncRes.synced)).toBe(true);
+    expect(Array.isArray(syncRes.targets)).toBe(true);
+
+    const unsyncRes = manager.unsyncAll();
+    expect(unsyncRes).toBeDefined();
+    expect(Array.isArray(unsyncRes.unsynced)).toBe(true);
+    expect(Array.isArray(unsyncRes.targets)).toBe(true);
+  });
 });

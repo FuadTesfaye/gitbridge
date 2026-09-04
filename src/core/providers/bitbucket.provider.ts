@@ -73,11 +73,28 @@ export class BitbucketProvider implements GitProvider {
     }
 
     const username = res.data.username || res.data.display_name?.replace(/\s+/g, "").toLowerCase() || "user";
+
+    let email: string | undefined;
+    try {
+      const emailRes = await requestJson<{
+        values?: Array<{ email: string; is_primary?: boolean }>;
+      }>(`${api}/user/emails`, "GET", undefined, {
+        headers: this.getAuthHeader(token),
+      });
+      if (emailRes.status === 200 && emailRes.data?.values) {
+        const primary = emailRes.data.values.find((e) => e.is_primary);
+        email = primary?.email || emailRes.data.values[0]?.email;
+      }
+    } catch {
+      // Email fetch is optional/best-effort
+    }
+
     return {
       id: res.data.account_id || res.data.uuid || username,
       username,
       displayName: res.data.display_name || username,
       avatarUrl: res.data.links?.avatar?.href,
+      email,
     };
   }
 

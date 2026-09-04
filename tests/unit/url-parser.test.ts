@@ -60,4 +60,36 @@ describe("Remote URL Parser", () => {
     expect(buildSshUrl("github.com", "fuad", "gitbridge", "personal")).toBe("git@github.com-personal:fuad/gitbridge.git");
     expect(buildHttpsUrl("gitlab.com", "corp/sub", "app")).toBe("https://gitlab.com/corp/sub/app.git");
   });
+
+  it("handles gitea and codeberg providers", () => {
+    const gitea = parseRemoteUrl("https://gitea.internal.lan/team/proj.git");
+    expect(gitea?.providerId).toBe("gitea");
+
+    const codeberg = parseRemoteUrl("git@codeberg.org:org/repo.git");
+    expect(codeberg?.providerId).toBe("gitea");
+  });
+
+  it("handles short prefix aliases like github-work", () => {
+    const parsed = parseRemoteUrl("git@github-work:user/repo.git");
+    expect(parsed?.host).toBe("github.com");
+    expect(parsed?.accountAlias).toBe("work");
+
+    const bb = parseRemoteUrl("git@bitbucket-team:user/repo.git");
+    expect(bb?.host).toBe("bitbucket.org");
+    expect(bb?.accountAlias).toBe("team");
+  });
+
+  it("handles ssh://, git+ssh://, file://, and invalid URLs", () => {
+    const sshProto = parseRemoteUrl("ssh://git@github.com/org/repo.git");
+    expect(sshProto?.protocol).toBe("ssh");
+
+    const gitSsh = parseRemoteUrl("git+ssh://gitlab.com/org/repo.git");
+    expect(gitSsh?.protocol).toBe("ssh");
+
+    const fileProto = parseRemoteUrl("file:///local/repos/my-repo.git");
+    expect(fileProto?.protocol).toBe("file");
+
+    expect(parseRemoteUrl("")).toBeNull();
+    expect(parseRemoteUrl("not-a-valid-url-format")).toBeNull();
+  });
 });

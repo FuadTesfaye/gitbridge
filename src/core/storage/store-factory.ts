@@ -5,7 +5,7 @@ import { WindowsCredentialStore } from "./windows-cred";
 import { EncryptedVaultCredentialStore } from "./encrypted-vault";
 import { PathResolver, defaultPathResolver } from "../config/path-resolver";
 
-class CompositeCredentialStore implements CredentialStore {
+export class CompositeCredentialStore implements CredentialStore {
   readonly name: string;
   private primary: CredentialStore;
   private fallback: EncryptedVaultCredentialStore;

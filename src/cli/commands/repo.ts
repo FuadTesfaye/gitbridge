@@ -224,6 +224,6 @@ export async function handleRepoUnset(
   console.log(pc.green(`\n✔ Removed GitBridge repository binding for '${repoName}' (${repoRoot}).\n`));
 }
 
-export async function handleRepoInit(store: ConfigStore = defaultConfigStore) {
-  return handleRepoSet(undefined, {}, store);
+export async function handleRepoInit(store: ConfigStore = defaultConfigStore, targetDir?: string) {
+  return handleRepoSet(targetDir, {}, store);
 }

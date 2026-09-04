@@ -128,6 +128,18 @@ export class BridgeService {
     }
   }
 
+  listProviders() {
+    return defaultProviderRegistry.listStates(this.store);
+  }
+
+  enableProvider(id: string): void {
+    defaultProviderRegistry.enableProvider(id, this.store);
+  }
+
+  disableProvider(id: string): void {
+    defaultProviderRegistry.disableProvider(id, this.store);
+  }
+
   async enable(): Promise<void> {
     this.store.setEnabled(true);
     this.gitInjector.inject();

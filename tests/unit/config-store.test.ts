@@ -89,4 +89,33 @@ describe("ConfigStore", () => {
     store.removeAccount("gh_personal");
     expect(store.loadAccounts().length).toBe(0);
   });
+
+  it("updates and removes identities, managing default state", () => {
+    store.addIdentity({ id: "id1", name: "User 1", email: "1@test.com" });
+    store.addIdentity({ id: "id2", name: "User 2", email: "2@test.com" });
+
+    const updated = store.updateIdentity("id1", { name: "User One Updated", isDefault: true });
+    expect(updated.name).toBe("User One Updated");
+    expect(updated.isDefault).toBe(true);
+
+    const removed = store.removeIdentity("id1");
+    expect(removed).toBe(true);
+    expect(store.loadIdentities().length).toBe(1);
+
+    expect(store.removeIdentity("nonexistent")).toBe(false);
+  });
+
+  it("removes repository profiles cleanly", () => {
+    store.saveRepositoryProfile({
+      path: "/path/to/my-repo",
+      identityId: "personal",
+      remotes: [],
+    });
+
+    expect(store.loadRepositories().length).toBe(1);
+    const removed = store.removeRepositoryProfile("/path/to/my-repo");
+    expect(removed).toBe(true);
+    expect(store.loadRepositories().length).toBe(0);
+    expect(store.removeRepositoryProfile("/nonexistent")).toBe(false);
+  });
 });
