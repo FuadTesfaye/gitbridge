@@ -17,7 +17,7 @@ import { handleCloneCommand } from "./commands/clone";
 import { handleSshList, handleSshGenerate, handleSshLink } from "./commands/ssh";
 import { handleCompletionCommand } from "./commands/completion";
 import { handleRuleList, handleRuleAdd, handleRuleRemove } from "./commands/rule";
-import { handleRepoInit } from "./commands/repo";
+import { handleRepoInit, handleRepoSet, handleRepoList, handleRepoUnset } from "./commands/repo";
 import { handleContextCommand } from "./commands/context";
 import { handleRemoteList, handleRemoteAdd } from "./commands/remote";
 import { handlePushCommand } from "./commands/push";
@@ -46,7 +46,7 @@ export function createProgram(name = "gitbridge"): Command {
   program
     .name(name)
     .description("Universal Git Identity & Multi-Account Management Layer")
-    .version("0.2.4");
+    .version("0.2.5");
 
   configureProgramHelp(program, name);
 
@@ -168,6 +168,24 @@ export function createProgram(name = "gitbridge"): Command {
     .command("init")
     .description("Initialize GitBridge profile and identity for the current Git repository")
     .action(() => handleRepoInit());
+
+  // Repository Subcommands
+  const repoCmd = program
+    .command("repo")
+    .description("Manage persistent repository bindings (pin a repo to an identity and provider)");
+
+  repoCmd
+    .command("set [path]")
+    .description("Bind a repository permanently to an identity, email, and provider")
+    .option("-i, --identity <identityId>", "Identity ID or profile name")
+    .option("-e, --email <email>", "Commit email address")
+    .option("-p, --provider <provider>", "Git provider (github, gitlab, bitbucket, etc.)")
+    .option("-a, --account <accountId>", "Provider account ID")
+    .action((pathArg, opts) => handleRepoSet(pathArg, opts));
+
+  repoCmd.command("list").alias("ls").description("List all remembered repository bindings").action(() => handleRepoList());
+  repoCmd.command("unset [path]").alias("rm").description("Unbind a repository's persistent profile").action((pathArg) => handleRepoUnset(pathArg));
+  repoCmd.command("init").description("Initialize profile for current repo").action(() => handleRepoInit());
 
   // Identity Subcommands
   const identityCmd = program

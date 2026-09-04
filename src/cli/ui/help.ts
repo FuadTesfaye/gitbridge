@@ -46,6 +46,7 @@ export function formatRootHelp(programName: string = "gitbridge"): string {
   ];
 
   const management: HelpRow[] = [
+    { name: "repo", desc: "Manage persistent repository bindings (set, list, unset)" },
     { name: "identity", alias: "id", desc: "Manage commit identities (list, add, use, remove)" },
     { name: "account", alias: "acc", desc: "Manage authenticated provider accounts (list, remove)" },
     { name: "auth", desc: "Authenticate with Git providers (login, logout)" },

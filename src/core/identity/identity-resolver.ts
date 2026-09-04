@@ -84,26 +84,32 @@ export class IdentityResolver {
     let repoProfile: RepositoryProfile | null = null;
     let source: ResolutionSource = "unconfigured";
 
-    // 0. Check Local Repository Config (.git/gitbridge.json)
+    // 0. Check Local Repository Config (.git/gitbridge.json or root .gitbridge.json)
     if (effectiveRepoRoot) {
-      const localConfigFile = path.join(effectiveRepoRoot, ".git", "gitbridge.json");
-      if (fs.existsSync(localConfigFile)) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(localConfigFile, "utf-8"));
-          const localParsed = LocalRepoConfigSchema.parse(raw);
-          const targetId = localParsed.identityId || localParsed.profile;
-          if (targetId) {
-            const found = identities.find((i) => i.id === targetId);
-            if (found) {
-              resolvedIdentity = found;
-              source = "repo_profile";
+      const candidates = [
+        path.join(effectiveRepoRoot, ".git", "gitbridge.json"),
+        path.join(effectiveRepoRoot, ".gitbridge.json"),
+      ];
+      for (const localConfigFile of candidates) {
+        if (fs.existsSync(localConfigFile)) {
+          try {
+            const raw = JSON.parse(fs.readFileSync(localConfigFile, "utf-8"));
+            const localParsed = LocalRepoConfigSchema.parse(raw);
+            const targetId = localParsed.identityId || localParsed.profile;
+            if (targetId) {
+              const found = identities.find((i) => i.id === targetId);
+              if (found) {
+                resolvedIdentity = found;
+                source = "repo_profile";
+              }
             }
+            if (localParsed.accountId) {
+              resolvedAccount = accounts.find((a) => a.id === localParsed.accountId) || null;
+            }
+            if (resolvedIdentity) break;
+          } catch {
+            // Ignored
           }
-          if (localParsed.accountId) {
-            resolvedAccount = accounts.find((a) => a.id === localParsed.accountId) || null;
-          }
-        } catch {
-          // Ignored
         }
       }
     }

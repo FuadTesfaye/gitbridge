@@ -160,6 +160,12 @@ GitBridge provides dual binaries: `gitbridge` (verbose) and `gb` (fast shorthand
 - `gb ssh gen [--name <n>] [--email <e>]`: Generate a modern ed25519 SSH key.
 - `gb ssh link [keyPath] [accountId]`: Associate an SSH key with an authenticated account.
 
+### Repository Profiles & Binding
+- `gb repo set [path] [--identity <id>] [--email <email>] [--provider <prov>] [--account <acc>]`: Bind a repository permanently to an identity, email, and provider. Remembers forever without asking again.
+- `gb repo ls` (`gb repo list`): List remembered repository bindings.
+- `gb repo rm [path]` (`gb repo unset`): Remove repository binding.
+- `gb init`: Interactive repository setup wizard.
+
 ### Directory Rules
 - `gb rules ls`: List directory mapping rules.
 - `gb rules add <path> <identityId> [--provider <prov>] [--account <accId>]`: Map a folder to an identity.

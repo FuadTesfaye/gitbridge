@@ -1,226 +1,184 @@
 ---
 name: gitbridge
 description: >-
-  Manage Git identities, multi-account routing, SSH host aliases, directory rules, credential helpers, native git overrides, and IDE sync in GitBridge. Use when the user asks to configure or troubleshoot Git identities, multiple GitHub/GitLab accounts, SSH keys, repository commit author profiles, pre-commit guards, or develop/test the GitBridge codebase and companion extension.
+  Manage Git identities, multi-account routing, SSH host aliases, directory rules, credential helpers, native git overrides, security auditing, and IDE sync in GitBridge. Use when the user asks to configure or troubleshoot Git identities, multiple GitHub/GitLab accounts, SSH keys, repository commit author profiles, pre-commit guards, or develop/test the GitBridge codebase and companion extension.
 ---
 
-# GitBridge Workspace Skill
+# GitBridge Universal AI Skill & Operational Runbook
 
-This skill provides step-by-step procedures and runbooks for configuring, operating, and developing **GitBridge** (Universal Git Identity & Multi-Account Management Layer).
-
----
-
-## Technical References
-
-For deep architectural explanations and reference tables, refer to:
-- [System Architecture & Component Sequence](./references/architecture.md)
-- [CLI Cheat Sheet & Command Matrix](./references/cli-cheat-sheet.md)
-- [Troubleshooting & Diagnostics Runbook](./references/troubleshooting.md)
+Welcome to **GitBridge**! This skill provides complete operational runbooks, user intent translation tables, and step-by-step procedures for AI assistants (**Claude, Gemini, OpenAI / Codex, DeepSeek, Qwen, Kimi, Cursor, Copilot, Antigravity**) to understand and execute any user request accurately.
 
 ---
 
-## Procedure 1: Setting Up & Managing Git Identities
+## 1. Quick Natural Language Intent Translation Table
 
-Use this workflow to configure distinct author profiles (e.g. Work, Personal, Open Source).
+When a user asks in plain English (or any language) to perform an action, run the corresponding command:
 
-1. **List existing identities**:
-   ```bash
-   gb id ls
-   ```
-2. **Add a new identity**:
-   ```bash
-   # Add an identity with name, email, and optional signing key
-   gb id add --id work --name "Fuad Work" --email "fuad@workcorp.com"
-   
-   # Add a personal identity and set it as global default
-   gb id add --id personal --name "Fuad Tesfaye" --email "fuad@personal.me" --default
-   ```
-3. **Verify configuration**:
-   ```bash
-   gb st
-   ```
+| User Natural Language Request | Exact GitBridge Command | Description |
+|---|---|---|
+| *"Set this repository to use my work email / identity and remember it"* | `gb repo set . -i <identityId>` | Permanently locks the repo to that identity without asking again |
+| *"Set this repo to use GitLab and my company email"* | `gb repo set . -i <id> -p gitlab -a <accountId>` | Binds repo to provider, account, and identity |
+| *"What identity/account is this repo using?"* | `gb context` (`gb ctx`) | Displays complete context breakdown |
+| *"Why did my commit use this email?"* | `gb explain` | Decision tree analysis across all 5 resolution tiers |
+| *"Who am I currently committing as?"* | `gb current` (`gb cur`) | Prints active author name & email |
+| *"Switch my identity in this repo to personal"* | `gb switch personal` | Updates local `.git/gitbridge.json` and git config |
+| *"Show all configured identities"* | `gb identity list` (`gb id ls`) | Lists identities with names, emails, keys |
+| *"Add a new identity"* | `gb identity add --id <id> --name "<name>" --email "<email>"` | Registers new commit author identity |
+| *"Edit an identity"* | `gb identity edit <id> [--name <n>] [--email <e>]` | Edits an existing identity |
+| *"Connect / log in to my GitHub account"* | `gb auth login github -t <pat> --ssh-key ~/.ssh/id_ed25519` | Validates & secures token in OS keyring |
+| *"Connect / log in to my GitLab account"* | `gb auth login gitlab -u <user> -p <pass> --host <url>` | Logs in to public or self-hosted GitLab |
+| *"List authenticated provider accounts"* | `gb account list` (`gb acc ls`) | Shows connected accounts across providers |
+| *"Map an entire directory tree to an identity"* | `gb rules add <folderPath> <identityId>` | Compiles Git `[includeIf "gitdir:..."]` rule |
+| *"List directory rules"* | `gb rules list` (`gb rules ls`) | Shows all path-to-identity mappings |
+| *"List remembered repositories"* | `gb repo list` (`gb repo ls`) | Lists all pinned repositories |
+| *"Run a security check / audit"* | `gb security check` (`gb sec check`) | Audits permissions, keyrings, remotes, staged secrets |
+| *"Fix my security permissions and install hooks"* | `gb security fix` (`gb sec fix`) | Auto-locks permissions to 0700/0600 & installs hooks |
+| *"Scan this project for leaked secrets"* | `gb security scan [path]` | Deep scans for API tokens, private keys, `.env` files |
+| *"Clone a repo with correct account & identity"* | `gb clone <url>` | Auto-detects provider, matches account, sets identity |
+| *"Run system diagnostics and connectivity tests"* | `gb doctor` (`gb doc`) | Inspects Git CLI, SSH keys, and provider APIs |
+| *"Enable native Git integration"* | `gb enable` | Injects managed blocks into `~/.gitconfig` and `~/.ssh/config` |
+| *"Route native `git` commands through GitBridge"* | `gb override enable` | Installs shims and shell PATH integration |
+| *"Sync with VS Code, Cursor, or Antigravity"* | `gb ide sync` | Updates `git.path` in editor settings |
 
 ---
 
-## Procedure 2: Mapping Directory Rules for Automatic Identity Switching
+## 2. Core Architecture & Mental Model
 
-GitBridge uses Git's native `includeIf "gitdir:..."` mechanism to dynamically switch identities based on file paths.
+GitBridge strictly decouples Git management into three independent layers:
+```text
+                GITBRIDGE
+                    │
+       ┌────────────┼────────────┐
+       │            │            │
+       ▼            ▼            ▼
+   IDENTITY      ACCOUNT      PROVIDER
+     WHO AM I?   WHICH        WHERE AM I
+                 ACCOUNT?     HOSTING CODE?
+   (Name, Email, (Username,   (GitHub, GitLab,
+   Signing Key)  Keychain)    Bitbucket, Self-Hosted)
+```
 
-1. **Map a directory path to an identity**:
+- **Identity**: Git author name, email, commit signing key.
+- **Account**: Authenticated user session with token/password stored in OS Keyring.
+- **Provider**: Hosting platform (GitHub, GitLab, Bitbucket, Gitea, Self-Hosted).
+- **Context Engine**: Maps `repository -> remote -> provider -> account -> identity -> SSH credentials`.
+
+### Resolution Precedence Hierarchy (Highest to Lowest)
+1. **Tier 1: Local Repository Override** (`.git/gitbridge.json` or `.gitbridge.json`): Direct per-repo setting. Takes absolute priority.
+2. **Tier 2: Repository Profile** (`repos.json`): Stored globally via `gb repo set` or `gb init`.
+3. **Tier 3: Directory Rule** (`config.json`): Longest prefix match against configured rules (compiled to `[includeIf "gitdir:..."]`).
+4. **Tier 4: Global Default Identity** (`defaultIdentityId`).
+5. **Tier 5: System Git Fallback** (`~/.gitconfig` `user.name` / `user.email`).
+
+---
+
+## 3. Operational Runbooks
+
+### Runbook 1: Pinning a Selected Repository to an Email & Provider (Persistent Memory)
+When the user asks to configure a specific repository:
+
+1. **Pin from inside the repository**:
    ```bash
-   # Map ~/work and all its subdirectories to the 'work' identity
-   gb rules add ~/work/ work
-
-   # Map ~/personal to the 'personal' identity
-   gb rules add ~/personal/ personal
+   cd /path/to/my-repo
+   gb repo set . --identity work --provider gitlab --account gitlab_fuadt
    ```
-2. **Inject configuration into native Git**:
+2. **Pin by providing an email directly**:
+   ```bash
+   gb repo set /path/to/my-repo --email "fuad@workcorp.com" --provider gitlab
+   ```
+3. **Verify the binding**:
+   ```bash
+   gb context
+   ```
+   *GitBridge writes `.git/gitbridge.json`, records the profile in `~/.gitbridge/repos.json`, and installs safety hooks. It will remember this configuration permanently without ever asking again.*
+
+---
+
+### Runbook 2: Setting Up a New Git Identity & Provider Account
+
+1. **Add Identity**:
+   ```bash
+   gb id add --id insa --name "Fuad Tesfaye" --email "fuadt@insa.gov.et"
+   ```
+2. **Authenticate Provider**:
+   ```bash
+   # GitHub with Personal Access Token & SSH Key:
+   gb auth login github --token <token> --ssh-key ~/.ssh/id_ed25519
+
+   # GitLab (cloud or self-hosted) with credentials:
+   gb auth login gitlab -u "fuadt" -p "password" --host "http://172.27.23.116" --ssh-key ~/.ssh/id_ed25519
+   ```
+3. **Map Directory Rule**:
+   ```bash
+   gb rules add ~/Insa insa --provider gitlab --account gitlab_fuadt
+   ```
+4. **Compile & Activate**:
    ```bash
    gb enable
    ```
-   *This compiles `~/.gitbridge/generated/main.gitconfig` and injects an `[include]` directive into `~/.gitconfig`.*
-3. **Verify resolution in a target directory**:
-   ```bash
-   cd ~/work/any-project
-   gb ctx
-   ```
-   *The output will confirm `source: directory_rule` with author `fuad@workcorp.com`.*
 
 ---
 
-## Procedure 3: Configuring Multi-Account SSH Isolation
+### Runbook 3: Running Security Audits & Auto-Remediation
 
-When using multiple accounts on the same Git provider (e.g. personal GitHub + corporate GitHub Enterprise), avoid SSH key collisions using isolated host aliases.
+GitBridge includes a built-in **Fort Knox** security subsystem:
 
-1. **Log in and register provider accounts with SSH keys**:
+1. **Run Full Security Audit**:
    ```bash
-   # Authenticate personal account
-   gb auth login github --token <personal_pat> --ssh-key ~/.ssh/id_personal
+   gb sec check
+   ```
+   *Inspects:*
+   - Filesystem permissions (verifies `0700` directories and `0600` files).
+   - Keyring backend status & hardware-bound AES-256-GCM vault.
+   - Staged changes for accidental API tokens, private keys, or `.env` files.
+   - Plaintext credentials embedded in Git remote URLs.
+   - Pre-commit and pre-push hook protection status.
 
-   # Authenticate work account
-   gb auth login github --token <work_pat> --ssh-key ~/.ssh/id_work
-   ```
-2. **Verify generated SSH configuration**:
+2. **Auto-Remediate All Findings**:
    ```bash
-   gb enable
-   cat ~/.gitbridge/generated/ssh_config
+   gb sec fix
    ```
-   *GitBridge creates distinct aliases:*
-   - `Host github.com-personal` -> `IdentityFile ~/.ssh/id_personal`, `IdentitiesOnly yes`
-   - `Host github.com-work` -> `IdentityFile ~/.ssh/id_work`, `IdentitiesOnly yes`
-3. **Link directory rule to default account**:
+   *Automatically locks permissions to `0700`/`0600`, scrubs plaintext remote tokens into the OS Keyring, and activates safety hooks.*
+
+3. **Scan Codebase for Secrets**:
    ```bash
-   gb rules add ~/work/ work --account work
+   gb sec scan [path]
    ```
-   *Git config will automatically rewrite remote URLs matching `git@github.com:` to `git@github.com-work:` using `insteadOf`.*
 
 ---
 
-## Procedure 4: Activating Native Git Overrides & IDE Synchronization
+### Runbook 4: Native Git & IDE Transparent Integration
 
-To route standard `git` commands and IDE source control panels through GitBridge without wrappers:
+To ensure IDEs (VS Code, Cursor, Antigravity) and native terminal commands (`git commit`, `git push`) use GitBridge automatically:
 
 1. **Enable Native Git Override**:
    ```bash
    gb override enable
    ```
-   *This generates shims in `~/.gitbridge/shims/git` and injects PATH configuration into your shell profile.*
-2. **Synchronize IDEs (VS Code, Cursor, Antigravity IDE, JetBrains)**:
+2. **Sync Installed IDEs**:
    ```bash
    gb ide sync
    ```
-   *Configures `git.path` in detected editor `settings.json` files and injects terminal environment variables.*
-3. **Check status**:
+3. **Verify Setup**:
    ```bash
-   gb override status
-   gb ide status
+   gb doc
    ```
 
 ---
 
-## Procedure 5: Pre-Commit Identity Guard & Mismatch Resolution
+## 4. Development & Testing Commands
 
-Prevent accidental commits with the wrong email (e.g. committing personal email to a corporate repo):
+When working on the GitBridge codebase:
+```bash
+# Run test suite
+bun test
 
-1. **Install safety hook in current repository**:
-   ```bash
-   gb init
-   ```
-   *Installs `.git/hooks/pre-commit` running `gitbridge hook pre-commit`.*
-2. **Check for mismatches**:
-   ```bash
-   gb ctx
-   ```
-3. **Fix mismatch if flagged**:
-   ```bash
-   # Remove conflicting repository-level email override
-   git config --unset user.email
-   git config --unset user.name
+# Typecheck without emitting
+bun run typecheck
 
-   # Or switch explicit identity
-   gb sw work
-   ```
+# Production build
+bun run build
 
----
-
-## Procedure 6: Developing, Testing & Verifying GitBridge Code
-
-Follow these standards when contributing to or testing GitBridge:
-
-1. **Run full automated test matrix**:
-   ```bash
-   bun test
-   ```
-2. **Typecheck without emitting**:
-   ```bash
-   bun run typecheck
-   ```
-3. **Compile production distribution**:
-   ```bash
-   bun run build
-   ```
-   *Outputs bundled executables to `dist/bin/gitbridge.js` and `dist/bin/gb.js`.*
-4. **Isolate test environments**:
-   Always use `GITBRIDGE_HOME=/tmp/test-gitbridge` or mock instances of `ConfigStore` during integration tests to prevent touching `~/.gitconfig` or `~/.ssh/config`.
-
----
-
-## Procedure 7: Companion IDE Extension Development (`extension/`)
-
-1. **Navigate to extension directory**:
-   ```bash
-   cd extension
-   ```
-2. **Install dependencies & build bundle**:
-   ```bash
-   bun install
-   bun run build
-   ```
-3. **Package `.vsix` extension package**:
-   ```bash
-   bun run package
-   ```
-   *Produces `gitbridge-vscode-<version>.vsix` for installation in VS Code, Cursor, or Antigravity IDE.*
-
----
-
-## Procedure 8: Selective Providers & Diagnostic Inspections
-
-GitBridge uses a **selective-by-default** model (*"Discover broadly, configure narrowly, activate lazily"*).
-
-1. **Quick Progressive Setup**:
-   ```bash
-   gb setup --quick
-   ```
-   *Automatically detects existing Git tools, SSH keys, active remotes, and configures only the providers found.*
-
-2. **Managing Enabled Providers**:
-   ```bash
-   # List supported providers and their enabled/authenticated status
-   gb prov ls
-
-   # Enable a provider (e.g. GitLab)
-   gb prov enable gitlab
-
-   # Disable a provider (without erasing credentials)
-   gb prov disable bitbucket
-   ```
-
-3. **Inspecting Resolution Decision Tree (Why was an identity chosen?)**:
-   ```bash
-   gb explain
-   ```
-   *Breaks down the 5-tier resolution ladder (Local Repo Config -> Repos Profile -> Directory Rule -> Global Default -> System Fallback).*
-
-4. **Exporting Environment Variables for Shells / CI**:
-   ```bash
-   gb env
-   # Evaluate directly in current shell session:
-   eval "$(gb env)"
-   ```
-
-5. **Machine-Readable Context for IDEs & Scripts**:
-   ```bash
-   gb ctx --json
-   ```
-
+# Run local CLI
+bun run bin/gb.ts --help
+```

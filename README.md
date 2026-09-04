@@ -226,6 +226,9 @@ If your repository's local Git email conflicts with your GitBridge rule, commits
 | `gb sw [id]` | `gitbridge switch [id]` | `-g, --global` | Switch active identity locally or globally |
 | `gb env` | `gitbridge env` | None | Print shell exports (`GIT_AUTHOR_NAME`, etc.) |
 | `gb init` | `gitbridge init` | None | Initialize repo profile and install pre-commit guard |
+| `gb repo set` | `gb repo set` | `[path] [-i id] [-e email] [-p prov] [-a acc]` | Bind repo permanently to identity, email, and provider |
+| `gb repo ls` | `gb repo list` | None | List remembered repository profiles |
+| `gb repo rm` | `gb repo unset` | `[path]` | Remove repository binding |
 | `gb doc` | `gitbridge doctor` | None | Run system, keyring, SSH, and provider health checks |
 | `gb enable` | `gitbridge enable` | None | Inject managed include blocks into `~/.gitconfig` and `~/.ssh/config` |
 | `gb disable` | `gitbridge disable` | None | Safely remove GitBridge integration blocks |

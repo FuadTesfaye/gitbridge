@@ -6,134 +6,214 @@ import { IdentityGuard } from "@/core/safety/identity-guard";
 import { promptSelect, promptConfirm } from "../ui/prompts";
 import { logger } from "@/utils/logger";
 import pc from "picocolors";
-import type { RepositoryRemote } from "@/core/config/schema";
+import Table from "cli-table3";
+import type { RepositoryRemote, GitProviderType } from "@/core/config/schema";
 
-export async function handleRepoInit(store: ConfigStore = defaultConfigStore) {
-  const cwd = process.cwd();
-  const git = new GitCli(cwd);
+export interface RepoSetOptions {
+  identity?: string;
+  email?: string;
+  provider?: string;
+  account?: string;
+}
 
-  let isGitRepo = await git.isGitRepo();
+export async function handleRepoSet(
+  targetPathArg?: string,
+  options: RepoSetOptions = {},
+  store: ConfigStore = defaultConfigStore
+) {
+  const targetDir = path.resolve(targetPathArg || process.cwd());
+  const git = new GitCli(targetDir);
+
+  const isGitRepo = await git.isGitRepo();
   if (!isGitRepo) {
-    const initialize = await promptConfirm({
-      message: `Current directory is not a Git repository. Run 'git init'?`,
-      initialValue: true,
-    });
-    if (initialize) {
-      await git.exec(["init"]);
-      isGitRepo = true;
-    } else {
-      logger.warn("Initialization aborted.");
-      return;
-    }
+    logger.error(`The path '${targetDir}' is not a Git repository.`);
+    return;
   }
 
-  const repoRoot = (await git.getRepoRoot()) || cwd;
+  const repoRoot = (await git.getRepoRoot()) || targetDir;
   const repoName = path.basename(repoRoot);
-
-  console.log(pc.bold(`\n  CONFIGURING REPOSITORY: ${pc.cyan(repoName)}`));
-  console.log(pc.gray(`  Path: ${repoRoot}\n`));
-
   const identities = store.loadIdentities();
   const accounts = store.loadAccounts();
 
   if (identities.length === 0) {
-    logger.warn("No GitBridge identities configured yet. Run 'gitbridge identity add' first.");
+    logger.error("No GitBridge identities configured. Run 'gb identity add' first.");
     return;
   }
 
-  // 1. Select Identity
-  const selectedIdentityId = await promptSelect({
-    message: "Select Git identity for this repository:",
-    options: identities.map((i) => ({
-      value: i.id,
-      label: `${i.id} (${i.name} <${i.email}>)`,
-    })),
-  });
+  // 1. Resolve Identity
+  let identity = options.identity
+    ? identities.find((i) => i.id === options.identity || i.email === options.identity)
+    : null;
 
-  const identity = store.getIdentity(selectedIdentityId)!;
+  if (!identity && options.email) {
+    identity = identities.find((i) => i.email.toLowerCase() === options.email?.toLowerCase());
+  }
 
-  // Set local git config user.name and user.email
+  if (!identity) {
+    if (options.identity || options.email) {
+      logger.warn(`Could not find configured identity for '${options.identity || options.email}'.`);
+    }
+
+    const selectedId = await promptSelect({
+      message: `Select Git identity to bind permanently to ${pc.cyan(repoName)}:`,
+      options: identities.map((i) => ({
+        value: i.id,
+        label: `${i.id} (${i.name} <${i.email}>)`,
+      })),
+    });
+    identity = store.getIdentity(selectedId)!;
+  }
+
+  // 2. Resolve Provider & Account
+  const remotes = await git.getRemotes();
+  const primaryRemote = remotes[0];
+  let targetProvider = options.provider || (primaryRemote?.parsedPush?.providerId || primaryRemote?.parsedFetch?.providerId);
+  let targetAccount = options.account;
+
+  if (!targetAccount && targetProvider && accounts.length > 0) {
+    const matchingAccounts = accounts.filter(
+      (a) => a.providerId.toLowerCase() === targetProvider?.toLowerCase()
+    );
+    if (matchingAccounts.length === 1) {
+      targetAccount = matchingAccounts[0].id;
+    } else if (matchingAccounts.length > 1 && !options.identity) {
+      targetAccount = await promptSelect({
+        message: `Select ${targetProvider} account for this repository:`,
+        options: matchingAccounts.map((a) => ({
+          value: a.id,
+          label: `${a.username} (${a.host}) [${a.id}]`,
+        })),
+      });
+    }
+  }
+
+  // 3. Set Local Git Config
   await git.setConfig("user.name", identity.name, "local");
   await git.setConfig("user.email", identity.email, "local");
   if (identity.signingKey) {
     await git.setConfig("user.signingkey", identity.signingKey, "local");
   }
 
-  // 2. Configure Remotes
-  const existingRemotes = await git.getRemotes();
-  const repositoryRemotes: RepositoryRemote[] = [];
-
-  if (existingRemotes.length > 0) {
-    console.log(pc.bold("\n  Detected Remotes:"));
-    for (const r of existingRemotes) {
-      const parsed = r.parsedPush || r.parsedFetch;
-      console.log(`    • ${pc.cyan(r.name)}: ${r.fetchUrl}`);
-
-      if (parsed) {
-        let accountId = parsed.accountAlias;
-        if (!accountId && accounts.length > 0) {
-          const matching = accounts.find((a) => a.host === parsed.host);
-          if (matching) {
-            accountId = matching.id;
-          }
-        }
-
-        repositoryRemotes.push({
-          name: r.name,
-          providerId: parsed.providerId,
-          host: parsed.host,
-          accountId,
-          url: r.fetchUrl,
-          rawUrl: r.fetchUrl,
-        });
-      }
-    }
-  }
-
-  // 3. Optional Pre-Commit Identity Guard
-  const installHook = await promptConfirm({
-    message: "Install GitBridge pre-commit identity guard hook in this repo?",
-    initialValue: true,
-  });
-
-  if (installHook) {
-    const guard = new IdentityGuard(store);
-    await guard.installPreCommitHook(repoRoot);
-  }
-
-  // 4. Save Repository Profile in repos.json
-  store.saveRepositoryProfile({
-    path: repoRoot,
-    identityId: selectedIdentityId,
-    remotes: repositoryRemotes,
-    safetyHookInstalled: installHook,
-  });
-
-  // 5. Save Local Repository Override (.git/gitbridge.json)
-  const primaryRemote = repositoryRemotes[0];
+  // 4. Save to .git/gitbridge.json (Tier 1 Local Override)
   const gitDir = path.join(repoRoot, ".git");
   if (fs.existsSync(gitDir)) {
     const localConfigPath = path.join(gitDir, "gitbridge.json");
     const localData = {
-      profile: selectedIdentityId,
-      identityId: selectedIdentityId,
-      providerId: primaryRemote?.providerId,
-      accountId: primaryRemote?.accountId,
+      profile: identity.id,
+      identityId: identity.id,
+      providerId: targetProvider as GitProviderType | undefined,
+      accountId: targetAccount,
     };
-    fs.writeFileSync(localConfigPath, JSON.stringify(localData, null, 2), "utf-8");
+    fs.writeFileSync(localConfigPath, JSON.stringify(localData, null, 2), { encoding: "utf-8", mode: 0o600 });
   }
 
-  console.log(pc.bold("\n  GITBRIDGE REPOSITORY CONTEXT CONFIGURED"));
+  // 5. Save to repos.json (Tier 2 Global Registry)
+  const repositoryRemotes: RepositoryRemote[] = remotes.map((r) => {
+    const parsed = r.parsedPush || r.parsedFetch;
+    return {
+      name: r.name,
+      providerId: (targetProvider as GitProviderType) || parsed?.providerId || "custom",
+      host: parsed?.host || "unknown",
+      accountId: targetAccount || parsed?.accountAlias,
+      url: r.fetchUrl,
+      rawUrl: r.fetchUrl,
+    };
+  });
+
+  store.saveRepositoryProfile({
+    path: repoRoot,
+    identityId: identity.id,
+    remotes: repositoryRemotes,
+    safetyHookInstalled: true,
+  });
+
+  // 6. Install safety hooks
+  const guard = new IdentityGuard(store);
+  await guard.installPreCommitHook(repoRoot);
+  await guard.installPrePushHook(repoRoot);
+
+  console.log(pc.bold("\n  ✔ REPOSITORY PERMANENTLY BOUND"));
   console.log("  ──────────────────────────────────────────────────");
-  console.log(`  Repository:   ${pc.cyan(repoName)}`);
-  if (primaryRemote) {
-    console.log(`  Remote:       ${primaryRemote.name} → ${pc.gray(primaryRemote.url)}`);
-    console.log(`  Provider:     ${pc.green(primaryRemote.providerId.toUpperCase())}`);
-    if (primaryRemote.accountId) {
-      console.log(`  Account:      ${pc.magenta(primaryRemote.accountId)}`);
+  console.log(`  Repository:   ${pc.cyan(repoName)} (${repoRoot})`);
+  console.log(`  Identity:     ${pc.bold(identity.name)} <${pc.green(identity.email)}> [${identity.id}]`);
+  if (targetProvider) {
+    console.log(`  Provider:     ${pc.green(targetProvider.toUpperCase())}`);
+  }
+  if (targetAccount) {
+    console.log(`  Account:      ${pc.magenta(targetAccount)}`);
+  }
+  console.log(`  Saved To:     ${pc.gray(".git/gitbridge.json & ~/.gitbridge/repos.json")}`);
+  console.log(`  Safety Hooks: ${pc.green("✔ Active (pre-commit & pre-push)")}`);
+  console.log(pc.cyan("\n  GitBridge will automatically remember this configuration forever without asking again.\n"));
+}
+
+export async function handleRepoList(store: ConfigStore = defaultConfigStore) {
+  const repos = store.loadRepositories();
+  const identities = store.loadIdentities();
+
+  console.log(pc.bold("\n  REMEMBERED REPOSITORY PROFILES"));
+  console.log(pc.gray("  ──────────────────────────────────────────────────"));
+
+  if (repos.length === 0) {
+    console.log(pc.yellow("  No repositories explicitly bound yet."));
+    console.log(pc.gray("  Use 'gb repo set' or 'gb init' inside a repository to bind it permanently.\n"));
+    return;
+  }
+
+  const table = new Table({
+    head: [
+      pc.cyan("Repository"),
+      pc.cyan("Path"),
+      pc.cyan("Identity"),
+      pc.cyan("Email"),
+      pc.cyan("Provider"),
+      pc.cyan("Account"),
+    ],
+  });
+
+  for (const r of repos) {
+    const name = path.basename(r.path);
+    const id = identities.find((i) => i.id === r.identityId);
+    const remote = r.remotes && r.remotes[0];
+    table.push([
+      pc.bold(name),
+      pc.gray(r.path),
+      id ? id.name : pc.gray(r.identityId),
+      id ? pc.green(id.email) : pc.gray("unknown"),
+      remote ? pc.cyan(remote.providerId.toUpperCase()) : pc.gray("auto"),
+      remote?.accountId ? pc.magenta(remote.accountId) : pc.gray("default"),
+    ]);
+  }
+
+  console.log(table.toString() + "\n");
+}
+
+export async function handleRepoUnset(
+  targetPathArg?: string,
+  store: ConfigStore = defaultConfigStore
+) {
+  const targetDir = path.resolve(targetPathArg || process.cwd());
+  const repoRoot = targetDir;
+  const repoName = path.basename(repoRoot);
+
+  // Remove .git/gitbridge.json if exists
+  const localConfig = path.join(repoRoot, ".git", "gitbridge.json");
+  if (fs.existsSync(localConfig)) {
+    try {
+      fs.unlinkSync(localConfig);
+    } catch {
+      // ignore
     }
   }
-  console.log(`  Identity:     ${pc.bold(identity.name)} <${pc.green(identity.email)}>`);
-  console.log(`  Safety Guard: ${installHook ? pc.green("✔ Installed in .git/hooks/pre-commit") : pc.gray("Skipped")}`);
-  console.log(pc.green("\n  You can now make commits and push normally with native Git!\n"));
+
+  // Remove from repos.json
+  const repos = store.loadRepositories();
+  const filtered = repos.filter((r) => path.resolve(r.path) !== path.resolve(repoRoot));
+  store.saveRepositories(filtered);
+
+  console.log(pc.green(`\n✔ Removed GitBridge repository binding for '${repoName}' (${repoRoot}).\n`));
+}
+
+export async function handleRepoInit(store: ConfigStore = defaultConfigStore) {
+  return handleRepoSet(undefined, {}, store);
 }

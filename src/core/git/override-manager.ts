@@ -126,10 +126,23 @@ if [ "$GITBRIDGE_OVERRIDE_BYPASS" = "1" ]; then
     exec "$REAL_GIT" "$@"
 fi
 
+GB_BIN=""
 if command -v gitbridge >/dev/null 2>&1; then
-    exec gitbridge git-proxy "$@"
+    GB_BIN="gitbridge"
 elif command -v gb >/dev/null 2>&1; then
-    exec gb git-proxy "$@"
+    GB_BIN="gb"
+elif [ -x "$HOME/.local/bin/gitbridge" ]; then
+    GB_BIN="$HOME/.local/bin/gitbridge"
+elif [ -x "$HOME/.local/bin/gb" ]; then
+    GB_BIN="$HOME/.local/bin/gb"
+elif [ -x "$HOME/.bun/bin/gitbridge" ]; then
+    GB_BIN="$HOME/.bun/bin/gitbridge"
+elif [ -x "$HOME/.bun/bin/gb" ]; then
+    GB_BIN="$HOME/.bun/bin/gb"
+fi
+
+if [ -n "$GB_BIN" ]; then
+    exec "$GB_BIN" git-proxy "$@"
 else
     REAL_GIT="\${GITBRIDGE_REAL_GIT:-${realGit}}"
     exec "$REAL_GIT" "$@"

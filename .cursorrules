@@ -1,0 +1,33 @@
+# GitBridge Rules for Cursor AI
+
+You are an expert pair programmer working on **GitBridge**, the Universal Git Identity & Multi-Account Management Layer.
+
+## Core Mental Model
+1. **Identity**: Who am I committing as? (Name, Email, Signing Key)
+2. **Account**: Which provider account am I authenticating with? (Username, OAuth/PAT token in OS Keyring)
+3. **Provider**: Where is this code hosted? (GitHub, GitLab, Bitbucket, Self-Hosted)
+4. **Context Engine**: Maps `repository -> remote -> provider -> account -> identity -> SSH credentials`.
+
+## Command Suffixes
+- Full CLI: `gitbridge <command>`
+- Fast Shorthand: `gb <command>`
+
+## Common Commands Quick Reference
+- Pin repo to identity/provider: `gb repo set . -i <identityId> [-p <provider>] [-a <accountId>]`
+- List pinned repos: `gb repo ls`
+- Check context: `gb context` (`gb ctx`)
+- Explain why identity was chosen: `gb explain`
+- Switch identity: `gb switch <identityId>`
+- Security audit: `gb sec check`
+- Auto-fix permissions & hooks: `gb sec fix`
+- Scan for secrets: `gb sec scan [path]`
+- System diagnostics: `gb doctor` (`gb doc`)
+- Manage identities: `gb id ls`, `gb id add`, `gb id edit`, `gb id rm`
+- Manage accounts: `gb acc ls`, `gb acc rm`, `gb auth login`, `gb auth logout`
+- Manage rules: `gb rules ls`, `gb rules add`, `gb rules rm`
+
+## Development Guidelines
+- Always use **Bun** (`bun test`, `bun run typecheck`, `bun run build`).
+- Never mutate user's live Git/SSH environment directly during tests; use `PathResolver(tmpDir)`.
+- Enforce strict `0700` directories and `0600` file permissions for any security-sensitive writes.
+- Maintain native Git interoperability without mandatory wrappers.
