@@ -7,6 +7,7 @@ import { GitOverrideManager } from "./override-manager";
 import { IdentityResolver } from "../identity/identity-resolver";
 import { IdentityGuard } from "../safety/identity-guard";
 import { GitCli } from "./git-cli";
+import { RepoAccessDetector } from "../providers/repo-access-detector";
 import { logger } from "@/utils/logger";
 
 export interface ProxyExecutionResult {
@@ -155,9 +156,23 @@ export class GitProxy {
 
       if (networkCommands.includes(subcommand)) {
         try {
-          const ctx = await this.resolver.resolve(cwd);
-          if (ctx.account && ctx.account.sshKeyPath && fs.existsSync(ctx.account.sshKeyPath)) {
-            injectedEnv.GIT_SSH_COMMAND = `ssh -i "${ctx.account.sshKeyPath}" -o IdentitiesOnly=yes`;
+          if (subcommand === "clone" && subcmdIndex >= 0) {
+            const nonOptions = args.slice(subcmdIndex + 1).filter((a) => !a.startsWith("-"));
+            const cloneUrl = nonOptions[0];
+            if (cloneUrl) {
+              const dest = nonOptions[1];
+              const targetPath = dest ? path.resolve(cwd, dest) : cwd;
+              const detector = new RepoAccessDetector(this.store);
+              const accessRes = await detector.detectAccess({ url: cloneUrl, targetPath });
+              if (accessRes.matched && accessRes.sshKeyPath && fs.existsSync(accessRes.sshKeyPath)) {
+                injectedEnv.GIT_SSH_COMMAND = `ssh -i "${accessRes.sshKeyPath}" -o IdentitiesOnly=yes`;
+              }
+            }
+          } else {
+            const ctx = await this.resolver.resolve(cwd);
+            if (ctx.account && ctx.account.sshKeyPath && fs.existsSync(ctx.account.sshKeyPath)) {
+              injectedEnv.GIT_SSH_COMMAND = `ssh -i "${ctx.account.sshKeyPath}" -o IdentitiesOnly=yes`;
+            }
           }
         } catch {
           // Fall through gracefully
@@ -192,8 +207,12 @@ export class GitProxy {
     if (exitCode === 0 && (subcommand === "init" || subcommand === "clone")) {
       try {
         let repoTarget = cwd;
+        let cloneUrl = "";
         if (subcommand === "clone" && subcmdIndex >= 0) {
           const nonOptions = args.slice(subcmdIndex + 1).filter((a) => !a.startsWith("-"));
+          if (nonOptions[0]) {
+            cloneUrl = nonOptions[0];
+          }
           if (nonOptions[1]) {
             repoTarget = path.resolve(cwd, nonOptions[1]);
           } else if (nonOptions[0]) {
@@ -207,7 +226,21 @@ export class GitProxy {
           const root = (await gitTarget.getRepoRoot()) || repoTarget;
           const ctx = await this.resolver.resolve(root);
 
-          if (ctx.matchedRule && ctx.identity) {
+          let targetIdentity = ctx.identity;
+          let targetAccountId = ctx.account?.id;
+          let targetProviderId = ctx.account?.providerId || ctx.matchedRule?.defaultProvider;
+
+          if (!targetIdentity && cloneUrl) {
+            const detector = new RepoAccessDetector(this.store);
+            const accessRes = await detector.detectAccess({ url: cloneUrl, targetPath: root });
+            if (accessRes.matched) {
+              targetIdentity = accessRes.identity || null;
+              targetAccountId = accessRes.accountId;
+              targetProviderId = accessRes.providerId;
+            }
+          }
+
+          if (targetIdentity) {
             const gitDir = path.join(root, ".git");
             if (fs.existsSync(gitDir)) {
               const localConfigPath = path.join(gitDir, "gitbridge.json");
@@ -216,10 +249,10 @@ export class GitProxy {
                   localConfigPath,
                   JSON.stringify(
                     {
-                      profile: ctx.identity.id,
-                      identityId: ctx.identity.id,
-                      providerId: ctx.matchedRule.defaultProvider,
-                      accountId: ctx.matchedRule.defaultAccountId,
+                      profile: targetIdentity.id,
+                      identityId: targetIdentity.id,
+                      providerId: targetProviderId,
+                      accountId: targetAccountId,
                     },
                     null,
                     2
@@ -227,6 +260,17 @@ export class GitProxy {
                   { encoding: "utf-8", mode: 0o600 }
                 );
               }
+
+              // Set local git author configs
+              await gitTarget.setConfig("user.name", targetIdentity.name, "local");
+              await gitTarget.setConfig("user.email", targetIdentity.email, "local");
+
+              // Save in repos.json profile
+              this.store.saveRepositoryProfile({
+                path: root,
+                identityId: targetIdentity.id,
+                safetyHookInstalled: true,
+              });
 
               // Auto-install safety hooks
               await this.guard.installPreCommitHook(root);

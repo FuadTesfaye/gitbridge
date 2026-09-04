@@ -4,6 +4,7 @@ import type {
   RemoteRepository,
   HealthCheckResult,
   ProviderCapabilities,
+  RepoAccessCheckResult,
 } from "./provider.interface";
 import { requestJson } from "@/utils/http";
 import { ProviderError } from "@/utils/errors";
@@ -145,6 +146,48 @@ export class GitLabProvider implements GitProvider {
         pingMs: Date.now() - start,
         error: err instanceof Error ? err.message : String(err),
       };
+    }
+  }
+
+  async checkRepoAccess(
+    token: string,
+    owner: string,
+    repo: string,
+    host?: string
+  ): Promise<RepoAccessCheckResult> {
+    try {
+      const api = this.getApiUrl(host);
+      const projectPath = encodeURIComponent(`${owner}/${repo}`);
+      const res = await requestJson<{
+        permissions?: {
+          project_access?: { access_level?: number };
+          group_access?: { access_level?: number };
+        };
+      }>(`${api}/projects/${projectPath}`, "GET", undefined, {
+        headers: this.getAuthHeader(token),
+      });
+
+      if (res.status === 200 && res.data) {
+        let perm: "read" | "write" | "admin" = "read";
+        const lvl = Math.max(
+          res.data.permissions?.project_access?.access_level || 0,
+          res.data.permissions?.group_access?.access_level || 0
+        );
+        if (lvl >= 40) {
+          perm = "admin";
+        } else if (lvl >= 30) {
+          perm = "write";
+        }
+        return {
+          hasAccess: true,
+          permission: perm,
+          owner,
+          repo,
+        };
+      }
+      return { hasAccess: false };
+    } catch {
+      return { hasAccess: false };
     }
   }
 }

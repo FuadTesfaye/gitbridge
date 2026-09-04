@@ -5,8 +5,8 @@ import pc from "picocolors";
 import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { ProviderDetector } from "@/core/providers/provider-detector";
 import { defaultProviderRegistry } from "@/core/providers/provider-registry";
+import { RepoAccessDetector } from "@/core/providers/repo-access-detector";
 import { IdentityGuard } from "@/core/safety/identity-guard";
-import { IdentityResolver } from "@/core/identity/identity-resolver";
 import { GitCli } from "@/core/git/git-cli";
 import { execProcess } from "@/utils/proc";
 import { parseRemoteUrl } from "@/core/git/url-parser";
@@ -18,6 +18,7 @@ export interface CloneCommandOptions {
   profile?: string;
   identity?: string;
   account?: string;
+  email?: string;
 }
 
 export async function handleCloneCommand(
@@ -32,6 +33,13 @@ export async function handleCloneCommand(
   }
 
   const cleanUrl = url.trim();
+  const isLocalGit =
+    fs.existsSync(cleanUrl) ||
+    cleanUrl.startsWith("file://") ||
+    cleanUrl.startsWith("/") ||
+    cleanUrl.startsWith("./") ||
+    cleanUrl.startsWith("../");
+
   const detector = new ProviderDetector(store);
   let detection = detector.detectFromRemote(cleanUrl);
 
@@ -39,49 +47,53 @@ export async function handleCloneCommand(
   console.log("  ──────────────────────────────────────────────────");
   console.log(`  Target URL:             ${pc.cyan(cleanUrl)}`);
 
-  // Handle unknown/custom provider
-  if (!detection.isKnown && detection.providerId === "custom") {
-    console.log(pc.yellow(`\n  ⚠ Unrecognized Git host: ${pc.bold(detection.host)}`));
-    const chosenType = await promptSelect<GitProviderType>({
-      message: `What Git platform is hosted at '${detection.host}'?`,
-      options: [
-        { value: "gitlab", label: "GitLab (Self-Hosted / Community / Enterprise)" },
-        { value: "github", label: "GitHub Enterprise Server" },
-        { value: "bitbucket", label: "Bitbucket Server / Data Center" },
-        { value: "custom", label: "Generic / Custom Git Server" },
-      ],
-    });
-
-    detection = {
-      ...detection,
-      providerId: chosenType,
-      name: chosenType.toUpperCase(),
-      isKnown: true,
-    };
-
-    // Save custom provider mapping
-    const config = store.loadConfig();
-    const existingCustom = config.customProviders || [];
-    if (!existingCustom.some((c) => c.host === detection.host)) {
-      store.saveConfig({
-        customProviders: [
-          ...existingCustom,
-          {
-            id: `custom_${detection.host.replace(/[^a-zA-Z0-9_-]/g, "_")}`,
-            name: `${chosenType.toUpperCase()} (${detection.host})`,
-            host: detection.host,
-            type: chosenType,
-          },
+  // Handle unknown/custom provider (only prompt for remote non-local URLs in interactive TTY)
+  if (!isLocalGit && !detection.isKnown && detection.providerId === "custom") {
+    if (process.stdin.isTTY) {
+      console.log(pc.yellow(`\n  ⚠ Unrecognized Git host: ${pc.bold(detection.host)}`));
+      const chosenType = await promptSelect<GitProviderType>({
+        message: `What Git platform is hosted at '${detection.host}'?`,
+        options: [
+          { value: "gitlab", label: "GitLab (Self-Hosted / Community / Enterprise)" },
+          { value: "github", label: "GitHub Enterprise Server" },
+          { value: "bitbucket", label: "Bitbucket Server / Data Center" },
+          { value: "custom", label: "Generic / Custom Git Server" },
         ],
       });
+
+      detection = {
+        ...detection,
+        providerId: chosenType,
+        name: chosenType.toUpperCase(),
+        isKnown: true,
+      };
+
+      // Save custom provider mapping
+      const config = store.loadConfig();
+      const existingCustom = config.customProviders || [];
+      if (!existingCustom.some((c) => c.host === detection.host)) {
+        store.saveConfig({
+          customProviders: [
+            ...existingCustom,
+            {
+              id: `custom_${detection.host.replace(/[^a-zA-Z0-9_-]/g, "_")}`,
+              name: `${chosenType.toUpperCase()} (${detection.host})`,
+              host: detection.host,
+              type: chosenType,
+            },
+          ],
+        });
+      }
     }
   }
 
-  console.log(`  Detected Provider:      ${pc.green(detection.name)} (${detection.host})`);
+  if (!isLocalGit) {
+    console.log(`  Detected Provider:      ${pc.green(detection.name)} (${detection.host})`);
 
-  // Auto-enable provider if not active
-  if (!defaultProviderRegistry.isProviderEnabled(detection.providerId, store)) {
-    defaultProviderRegistry.enableProvider(detection.providerId, store);
+    // Auto-enable provider if not active
+    if (!defaultProviderRegistry.isProviderEnabled(detection.providerId, store)) {
+      defaultProviderRegistry.enableProvider(detection.providerId, store);
+    }
   }
 
   const accounts = store.loadAccounts().filter((a) => a.providerId === detection.providerId || a.host === detection.host);
@@ -90,37 +102,46 @@ export async function handleCloneCommand(
   let selectedAccountId: string | undefined = options.account;
   let selectedIdentityId: string | undefined = options.identity || options.profile;
 
-  // Check if target directory matches an active Directory Rule
+  // Run RepoAccessDetector (Water-fall: Explicit Flags -> Directory Rules -> Repo Access -> Fallback)
   const targetCwd = destination ? path.resolve(process.cwd(), destination) : process.cwd();
-  const resolver = new IdentityResolver(store);
-  const matchedCtx = await resolver.resolve(targetCwd);
+  const accessDetector = new RepoAccessDetector(store);
+  const accessResult = await accessDetector.detectAccess({
+    url: cleanUrl,
+    targetPath: targetCwd,
+    explicitIdentityId: options.identity || options.profile,
+    explicitAccountId: options.account,
+    explicitEmail: options.email,
+  });
 
-  if (matchedCtx.matchedRule) {
-    console.log(pc.bold("\n  DIRECTORY RULE DETECTED"));
-    console.log(`  Matched Rule:           ${pc.green(matchedCtx.matchedRule.id)} (${matchedCtx.matchedRule.path})`);
-
-    if (!selectedIdentityId && matchedCtx.identity) {
-      selectedIdentityId = matchedCtx.identity.id;
-      console.log(`  Auto-Selected Identity: ${pc.bold(matchedCtx.identity.name)} <${pc.green(matchedCtx.identity.email)}>`);
+  if (accessResult.matched) {
+    if (accessResult.tier === "directory_rule") {
+      console.log(pc.bold("\n  DIRECTORY RULE DETECTED"));
+      console.log(`  Matched Rule:           ${pc.green(accessResult.reason)}`);
+    } else if (accessResult.tier === "explicit_flag") {
+      console.log(pc.bold("\n  CLI PARAMETER SPECIFIED"));
+    } else {
+      console.log(pc.bold("\n  REPOSITORY ACCESS AUTO-DETECTED"));
+      console.log(`  Detection Source:       ${pc.green(accessResult.reason)}`);
     }
 
-    if (!selectedAccountId && matchedCtx.matchedRule.defaultAccountId) {
-      selectedAccountId = matchedCtx.matchedRule.defaultAccountId;
-      console.log(`  Auto-Selected Account:  ${pc.magenta(selectedAccountId)}`);
-    } else if (!selectedAccountId && accounts.length > 0) {
-      const matching = accounts.find((a) => a.providerId === detection.providerId);
-      if (matching) {
-        selectedAccountId = matching.id;
-        console.log(`  Auto-Selected Account:  ${pc.magenta(selectedAccountId)}`);
-      }
+    if (!selectedIdentityId && accessResult.identityId) {
+      selectedIdentityId = accessResult.identityId;
+    }
+    if (accessResult.identity) {
+      console.log(`  Active Identity:        ${pc.bold(accessResult.identity.name)} <${pc.green(accessResult.identity.email)}>`);
+    }
+
+    if (!selectedAccountId && accessResult.accountId) {
+      selectedAccountId = accessResult.accountId;
+      console.log(`  Active Account:         ${pc.magenta(selectedAccountId)}`);
     }
   }
 
-  // Account Selection (only prompt if not determined by rule or flag)
-  if (!selectedAccountId && accounts.length > 0) {
+  // Account Selection Fallback (only prompt if interactive and not determined yet)
+  if (!selectedAccountId && !isLocalGit && accounts.length > 0) {
     if (accounts.length === 1) {
       selectedAccountId = accounts[0].id;
-    } else {
+    } else if (process.stdin.isTTY) {
       selectedAccountId = await promptSelect({
         message: `Select ${detection.name} account to clone with:`,
         options: accounts.map((a) => ({
@@ -129,14 +150,16 @@ export async function handleCloneCommand(
           hint: a.sshKeyPath ? `SSH: ${path.basename(a.sshKeyPath)}` : "PAT Auth",
         })),
       });
+    } else {
+      selectedAccountId = accounts[0].id;
     }
   }
 
-  // Identity Selection (only prompt if not determined by rule or flag)
+  // Identity Selection Fallback (only prompt if interactive and not determined yet)
   if (!selectedIdentityId && identities.length > 0) {
     if (identities.length === 1) {
       selectedIdentityId = identities[0].id;
-    } else {
+    } else if (process.stdin.isTTY) {
       selectedIdentityId = await promptSelect({
         message: "Select commit author identity for this repository:",
         options: identities.map((i) => ({
@@ -145,6 +168,9 @@ export async function handleCloneCommand(
           hint: i.isDefault ? "Global Default" : undefined,
         })),
       });
+    } else {
+      const def = identities.find((i) => i.isDefault) || identities[0];
+      selectedIdentityId = def.id;
     }
   }
 
@@ -168,7 +194,13 @@ export async function handleCloneCommand(
     args.push(destination);
   }
 
-  const result = await execProcess("git", args);
+  const selectedAccount = selectedAccountId ? accounts.find((a) => a.id === selectedAccountId) : undefined;
+  const cloneEnv: Record<string, string> = {};
+  if (selectedAccount?.sshKeyPath && fs.existsSync(selectedAccount.sshKeyPath)) {
+    cloneEnv.GIT_SSH_COMMAND = `ssh -i "${selectedAccount.sshKeyPath}" -o IdentitiesOnly=yes`;
+  }
+
+  const result = await execProcess("git", args, { env: cloneEnv });
   if (result.exitCode !== 0) {
     spinner.fail("git clone failed.");
     console.error(pc.red(result.stderr || result.stdout));
@@ -208,7 +240,7 @@ export async function handleCloneCommand(
       {
         name: "origin",
         providerId: detection.providerId,
-        host: detection.host,
+        host: detection.host || "local",
         accountId: selectedAccountId,
         url: cleanUrl,
         rawUrl: cleanUrl,

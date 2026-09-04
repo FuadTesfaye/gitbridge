@@ -69,8 +69,9 @@ GitBridge strictly decouples Git management into three independent layers:
 1. **Tier 1: Local Repository Override** (`.git/gitbridge.json` or `.gitbridge.json`): Direct per-repo setting. Takes absolute priority.
 2. **Tier 2: Repository Profile** (`repos.json`): Stored globally via `gb repo set` or `gb init`.
 3. **Tier 3: Directory Rule** (`config.json`): Longest prefix match against configured rules (compiled to `[includeIf "gitdir:..."]`).
-4. **Tier 4: Global Default Identity** (`defaultIdentityId`).
-5. **Tier 5: System Git Fallback** (`~/.gitconfig` `user.name` / `user.email`).
+4. **Tier 4: Remote Repository Access Detection** (`remote_access`): Auto-detects authenticated account access via repository namespace ownership, OS Keyring PAT/OAuth API verification, or SSH key routing.
+5. **Tier 5: Global Default Identity** (`defaultIdentityId`).
+6. **Tier 6: System Git Fallback** (`~/.gitconfig` `user.name` / `user.email`).
 
 ---
 

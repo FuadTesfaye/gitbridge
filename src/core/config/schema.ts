@@ -43,6 +43,8 @@ export const ProviderAccountSchema = z.object({
   host: z.string().min(1),
   username: z.string().min(1),
   displayName: z.string().optional(),
+  email: z.string().optional(),
+  identityId: z.string().optional(),
   authType: AuthTypeSchema,
   sshKeyPath: z.string().optional(),
   sshPort: z.number().optional(),

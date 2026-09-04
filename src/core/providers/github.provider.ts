@@ -5,6 +5,7 @@ import type {
   HealthCheckResult,
   DeviceCodeResponse,
   ProviderCapabilities,
+  RepoAccessCheckResult,
 } from "./provider.interface";
 import { requestJson } from "@/utils/http";
 import { ProviderError } from "@/utils/errors";
@@ -198,5 +199,42 @@ export class GitHubProvider implements GitProvider {
     }
 
     throw new ProviderError("Device authorization timed out.", this.name);
+  }
+
+  async checkRepoAccess(
+    token: string,
+    owner: string,
+    repo: string,
+    host?: string
+  ): Promise<RepoAccessCheckResult> {
+    try {
+      const api = this.getApiUrl(host);
+      const res = await requestJson<{
+        permissions?: { admin?: boolean; push?: boolean; pull?: boolean };
+      }>(`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, "GET", undefined, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+
+      if (res.status === 200 && res.data) {
+        let perm: "read" | "write" | "admin" = "read";
+        if (res.data.permissions?.admin) {
+          perm = "admin";
+        } else if (res.data.permissions?.push) {
+          perm = "write";
+        }
+        return {
+          hasAccess: true,
+          permission: perm,
+          owner,
+          repo,
+        };
+      }
+      return { hasAccess: false };
+    } catch {
+      return { hasAccess: false };
+    }
   }
 }

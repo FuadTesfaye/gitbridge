@@ -63,6 +63,13 @@ export interface ProviderInstallationState {
   capabilities: ProviderCapabilities;
 }
 
+export interface RepoAccessCheckResult {
+  hasAccess: boolean;
+  permission?: "read" | "write" | "admin";
+  owner?: string;
+  repo?: string;
+}
+
 export interface GitProvider {
   readonly id: GitProviderType;
   readonly name: string;
@@ -74,6 +81,14 @@ export interface GitProvider {
   listRepositories(token: string, host?: string): Promise<RemoteRepository[]>;
   checkHealth(host?: string): Promise<HealthCheckResult>;
   
+  // Optional remote access checking
+  checkRepoAccess?(
+    token: string,
+    owner: string,
+    repo: string,
+    host?: string
+  ): Promise<RepoAccessCheckResult>;
+
   // Optional Device Flow for GitHub / OAuth
   startDeviceFlow?(): Promise<DeviceCodeResponse>;
   pollDeviceFlow?(deviceCode: string, interval: number): Promise<{ token: string }>;

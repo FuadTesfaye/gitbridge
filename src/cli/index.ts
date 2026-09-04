@@ -95,9 +95,10 @@ export function createProgram(name = "gitbridge"): Command {
   program
     .command("clone <url> [destination]")
     .description("Smart clone with provider detection, account selection, and identity setup")
-    .option("--profile <profile>", "Identity profile to assign")
-    .option("--identity <id>", "Identity ID to assign")
-    .option("--account <account>", "Account ID to route clone through")
+    .option("-i, --identity <id>", "Identity ID to assign")
+    .option("-a, --account <account>", "Account ID to route clone through")
+    .option("-e, --email <email>", "Author email to bind repository to")
+    .option("--profile <profile>", "Identity profile to assign (alias for --identity)")
     .action((url, dest, opts) => handleCloneCommand(url, dest, opts));
 
   // Enable / Disable

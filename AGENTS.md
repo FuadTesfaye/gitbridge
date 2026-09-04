@@ -107,20 +107,23 @@ flowchart TD
     CheckLocal -- No --> CheckRepoProfile{Explicit Repo in repos.json?}
     CheckRepoProfile -- Yes --> ApplyRepo[2. Repository Profile Identity]
     CheckRepoProfile -- No --> CheckRules{Directory Matches a Rule?}
-    CheckRules -- Yes --> ApplyRule[3. Directory Rule (Longest Prefix Match)]
-    CheckRules -- No --> CheckDefault{Global Default Identity Set?}
-    CheckDefault -- Yes --> ApplyDefault[4. Global Default Identity]
+    CheckRules -- Yes --> ApplyRule[3. Directory Rule Longest Prefix Match]
+    CheckRules -- No --> CheckRemote{Remote Repo Access Detected?}
+    CheckRemote -- Yes --> ApplyRemote[4. Remote Access Detection Namespace/Token/SSH]
+    CheckRemote -- No --> CheckDefault{Global Default Identity Set?}
+    CheckDefault -- Yes --> ApplyDefault[5. Global Default Identity]
     CheckDefault -- No --> CheckSystem{System gitconfig has user.name/email?}
-    CheckSystem -- Yes --> ApplySystem[5. System Git Fallback]
-    CheckSystem -- No --> ApplyUnconf[6. Unconfigured State]
+    CheckSystem -- Yes --> ApplySystem[6. System Git Fallback]
+    CheckSystem -- No --> ApplyUnconf[7. Unconfigured State]
 ```
 
 1. **Local Repository Override** (`.git/gitbridge.json`): Direct per-repo setting without modifying global files.
-2. **Repository Profile** (`repo_profile`): Stored in `repos.json` or explicitly set via `gb init` / `gb switch`.
+2. **Repository Profile** (`repo_profile`): Stored in `repos.json` or explicitly set via `gb repo set` / `gb init` / `gb switch`.
 3. **Directory Rule** (`directory_rule`): Longest prefix match against configured rules in `config.json` (compiled to Git's native `[includeIf "gitdir:~/work/**"]`).
-4. **Global Default** (`global_default`): Designated fallback identity in `config.json` (`defaultIdentityId` or `isDefault: true`).
-5. **System Fallback** (`system_fallback`): Existing `user.name` and `user.email` from `~/.gitconfig`.
-6. **Unconfigured**: No valid identity found.
+4. **Remote Repository Access Detection** (`remote_access`): Auto-detects authenticated account access via repository namespace ownership, OS Keyring PAT/OAuth API verification, or SSH key routing.
+5. **Global Default** (`global_default`): Designated fallback identity in `config.json` (`defaultIdentityId` or `isDefault: true`).
+6. **System Fallback** (`system_fallback`): Existing `user.name` and `user.email` from `~/.gitconfig`.
+7. **Unconfigured**: No valid identity found.
 
 ---
 

@@ -4,6 +4,7 @@ import type {
   RemoteRepository,
   HealthCheckResult,
   ProviderCapabilities,
+  RepoAccessCheckResult,
 } from "./provider.interface";
 import { requestJson } from "@/utils/http";
 import { ProviderError } from "@/utils/errors";
@@ -136,6 +137,41 @@ export class BitbucketProvider implements GitProvider {
         pingMs: Date.now() - start,
         error: err instanceof Error ? err.message : String(err),
       };
+    }
+  }
+
+  async checkRepoAccess(
+    token: string,
+    owner: string,
+    repo: string,
+    host?: string
+  ): Promise<RepoAccessCheckResult> {
+    try {
+      const targetHost = host || this.defaultHost;
+      const api = this.getApiUrl(host);
+      let endpoint = `${api}/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+      if (targetHost !== "bitbucket.org") {
+        endpoint = `${api}/projects/${encodeURIComponent(owner)}/repos/${encodeURIComponent(repo)}`;
+      }
+
+      const res = await requestJson<{
+        project?: unknown;
+        slug?: string;
+      }>(endpoint, "GET", undefined, {
+        headers: this.getAuthHeader(token),
+      });
+
+      if (res.status === 200 && res.data) {
+        return {
+          hasAccess: true,
+          permission: "write",
+          owner,
+          repo,
+        };
+      }
+      return { hasAccess: false };
+    } catch {
+      return { hasAccess: false };
     }
   }
 }

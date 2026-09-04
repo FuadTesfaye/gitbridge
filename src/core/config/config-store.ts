@@ -29,6 +29,8 @@ export interface CreateAccountInput {
   host: string;
   username: string;
   displayName?: string;
+  email?: string;
+  identityId?: string;
   authType: ProviderAccount["authType"];
   sshKeyPath?: string;
   sshPort?: number;

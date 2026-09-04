@@ -145,6 +145,7 @@ export async function handleAuthLogin(
       host: cleanHost,
       username,
       displayName: user.displayName,
+      email: user.email,
       authType: "oauth",
       sshKeyPath,
     });

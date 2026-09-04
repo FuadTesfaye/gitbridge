@@ -49,18 +49,27 @@ export async function handleExplainCommand(store: ConfigStore = defaultConfigSto
     console.log(pc.gray(`      None of the ${rules.length} directory rules matched the current path prefix.`));
   }
 
-  // 4. Global Default Check
+  // 4. Remote Access Check
+  if (ctx.source === "remote_access") {
+    console.log(`    ${pc.green("✔")} Tier 4: Remote Repository Access Detection`);
+    console.log(pc.gray(`      Matched authenticated account/identity for repository remote.`));
+  } else {
+    console.log(`    ${pc.gray("○")} Tier 4: Remote Repository Access Detection`);
+    console.log(pc.gray(`      No matching authenticated account found for repository remotes.`));
+  }
+
+  // 5. Global Default Check
   if (ctx.source === "global_default") {
-    console.log(`    ${pc.green("✔")} Tier 4: Global Default Identity`);
+    console.log(`    ${pc.green("✔")} Tier 5: Global Default Identity`);
     console.log(pc.gray(`      Fell back to designated default identity ID: '${config.defaultIdentityId}'`));
   } else if (config.defaultIdentityId) {
-    console.log(`    ${pc.gray("○")} Tier 4: Global Default Identity (${config.defaultIdentityId})`);
+    console.log(`    ${pc.gray("○")} Tier 5: Global Default Identity (${config.defaultIdentityId})`);
     console.log(pc.gray(`      Skipped because a higher-priority rule already matched.`));
   }
 
-  // 5. System Fallback
+  // 6. System Fallback
   if (ctx.source === "system_fallback") {
-    console.log(`    ${pc.green("✔")} Tier 5: System Git Fallback`);
+    console.log(`    ${pc.green("✔")} Tier 6: System Git Fallback`);
     console.log(pc.gray(`      Used existing user.name and user.email from ~/.gitconfig.`));
   }
 

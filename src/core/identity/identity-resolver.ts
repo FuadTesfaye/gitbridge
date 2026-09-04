@@ -5,6 +5,7 @@ import { GitCli, type GitRemoteInfo } from "../git/git-cli";
 import { expandTilde } from "@/utils/platform";
 import { ProviderDetector } from "../providers/provider-detector";
 import { defaultProviderRegistry } from "../providers/provider-registry";
+import { RepoAccessDetector } from "../providers/repo-access-detector";
 import {
   type GitIdentity,
   type ProviderAccount,
@@ -13,7 +14,7 @@ import {
   LocalRepoConfigSchema,
 } from "../config/schema";
 
-export type ResolutionSource = "repo_profile" | "directory_rule" | "global_default" | "system_fallback" | "unconfigured";
+export type ResolutionSource = "repo_profile" | "directory_rule" | "remote_access" | "global_default" | "system_fallback" | "unconfigured";
 
 export interface ResolvedContext {
   cwd: string;
@@ -151,7 +152,24 @@ export class IdentityResolver {
       }
     }
 
-    // 3. Check Global Default Identity
+    // 3. Check Remote Repository Access Detection
+    if (!resolvedIdentity && remotes.length > 0) {
+      const firstRemote = remotes[0];
+      const remoteUrl = firstRemote.pushUrl || firstRemote.fetchUrl;
+      if (remoteUrl) {
+        const accessDetector = new RepoAccessDetector(this.store);
+        const accessRes = await accessDetector.detectAccess({ url: remoteUrl, targetPath });
+        if (accessRes.matched && accessRes.identity) {
+          resolvedIdentity = accessRes.identity;
+          source = "remote_access";
+          if (accessRes.account) {
+            resolvedAccount = accessRes.account;
+          }
+        }
+      }
+    }
+
+    // 4. Check Global Default Identity
     if (!resolvedIdentity) {
       const defaultId = config.defaultIdentityId || identities.find((i) => i.isDefault)?.id;
       if (defaultId) {
@@ -162,7 +180,7 @@ export class IdentityResolver {
       }
     }
 
-    // 4. If no identity is found, check if Git has a system/user identity configured
+    // 5. If no identity is found, check if Git has a system/user identity configured
     if (!resolvedIdentity && localGitEmail) {
       source = "system_fallback";
     }
