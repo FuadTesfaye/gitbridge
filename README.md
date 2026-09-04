@@ -66,12 +66,16 @@ GitBridge supports many platforms, but it **never forces you to configure provid
 
 ### One-Line Install (Linux & macOS)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/FuadTesfaye/gitbridge@main/install.sh | bash
+# Or directly from GitHub:
+# curl -fsSL https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.sh | bash
 ```
 
 ### One-Line Install (Windows PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/FuadTesfaye/gitbridge@main/install.ps1 | iex
+# Or directly from GitHub:
+# irm https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.ps1 | iex
 ```
 
 ### Global Installation via npm or Bun

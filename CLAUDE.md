@@ -34,8 +34,8 @@ When a user asks Claude to perform an action, use these exact commands:
 
 | Request | Command | Description |
 |---|---|---|
-| Install GitBridge (1-liner for Linux/macOS) | `curl -fsSL https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.sh \| bash` | Universal installer |
-| Install GitBridge (Windows PowerShell) | `irm https://raw.githubusercontent.com/FuadTesfaye/gitbridge/main/install.ps1 \| iex` | PowerShell installer |
+| Install GitBridge (1-liner for Linux/macOS) | `curl -fsSL https://cdn.jsdelivr.net/gh/FuadTesfaye/gitbridge@main/install.sh \| bash` | Universal installer |
+| Install GitBridge (Windows PowerShell) | `irm https://cdn.jsdelivr.net/gh/FuadTesfaye/gitbridge@main/install.ps1 \| iex` | PowerShell installer |
 | Set this repo to an email & provider | `gb repo set . -i <id> -p <prov>` | Binds repo permanently without asking again |
 | Check active repository context | `gb context` (`gb ctx`) | Displays repository, remote, provider, account, identity, SSH |
 | Why was this email/identity chosen? | `gb explain` | Explains decision tree across the 5 resolution tiers |
