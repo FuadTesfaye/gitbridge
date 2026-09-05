@@ -23,6 +23,7 @@ import { handleRemoteList, handleRemoteAdd } from "./commands/remote";
 import { handlePushCommand } from "./commands/push";
 import { handleSwitchCommand } from "./commands/switch";
 import { handleDoctorCommand } from "./commands/doctor";
+import { handleUpdateCommand } from "./commands/update";
 import { handleSetupCommand } from "./commands/setup";
 import { handleCredentialCommand } from "./commands/credential";
 import { handleHookCommand } from "./commands/hook";
@@ -39,6 +40,7 @@ import {
   handleIdeStatusCommand,
 } from "./commands/ide";
 import { configureProgramHelp } from "./ui/help";
+import { formatCommandError, formatOptionError, normalizeArgv, detectParentCommand, handleTooManyArguments } from "@/utils/similarity";
 import { GITBRIDGE_VERSION } from "@/version";
 
 export function createProgram(name = "gitbridge"): Command {
@@ -49,7 +51,20 @@ export function createProgram(name = "gitbridge"): Command {
     .description("Universal Git Identity & Multi-Account Management Layer")
     .version(GITBRIDGE_VERSION);
 
-  configureProgramHelp(program, name);
+  program.showSuggestionAfterError(false);
+
+  // Override parse and parseAsync to normalize -help to --help
+  const originalParse = program.parse.bind(program);
+  program.parse = ((argv?: readonly string[], parseOptions?: any) => {
+    const args = argv || process.argv;
+    return originalParse(normalizeArgv([...args]), parseOptions);
+  }) as any;
+
+  const originalParseAsync = program.parseAsync.bind(program);
+  program.parseAsync = ((argv?: readonly string[], parseOptions?: any) => {
+    const args = argv || process.argv;
+    return originalParseAsync(normalizeArgv([...args]), parseOptions);
+  }) as any;
 
   // Onboarding Wizard
   program
@@ -335,6 +350,16 @@ export function createProgram(name = "gitbridge"): Command {
     .description("Generate shell autocompletion script (bash, zsh, fish)")
     .action((sh) => handleCompletionCommand(sh));
 
+  // Self-Update Command
+  program
+    .command("update")
+    .alias("upgrade")
+    .description("Check for and install the latest version of GitBridge from npm")
+    .option("-c, --check", "Check for available updates without installing")
+    .option("-f, --force", "Force reinstallation of the latest version")
+    .option("--registry <url>", "Custom npm registry URL")
+    .action((opts) => handleUpdateCommand(opts));
+
   // Credential Helper (Invoked by Git CLI)
   const credCmd = program.command("credential").description("Git credential helper bridge (invoked by git)");
   credCmd.command("get").description("Retrieve credentials for git").action(() => handleCredentialCommand("get"));
@@ -366,6 +391,50 @@ export function createProgram(name = "gitbridge"): Command {
       const proxyArgs = Array.isArray(args) ? args : [];
       return handleGitProxyCommand(proxyArgs);
     });
+
+  // Disable Commander's built-in naive suggestions recursively on all commands
+  const disableSuggestionsRecursively = (cmd: Command) => {
+    cmd.showSuggestionAfterError(false);
+    for (const sub of cmd.commands) {
+      disableSuggestionsRecursively(sub);
+    }
+  };
+  disableSuggestionsRecursively(program);
+
+  // Configure outputError to format errors with intelligent suggestions
+  program.configureOutput({
+    outputError: (str, write) => {
+      const tooManyMatch = handleTooManyArguments(str, process.argv, name);
+      if (tooManyMatch) {
+        write(tooManyMatch + "\n");
+        return;
+      }
+
+      const unknownCmdMatch = str.match(/error: unknown command '([^']+)'/);
+      if (unknownCmdMatch) {
+        const unknownCmd = unknownCmdMatch[1];
+        const parentCmd = detectParentCommand(process.argv, unknownCmd);
+        write(formatCommandError(unknownCmd, name, parentCmd) + "\n");
+        return;
+      }
+
+      const unknownOptMatch = str.match(/error: unknown option '([^']+)'/);
+      if (unknownOptMatch) {
+        const opt = unknownOptMatch[1];
+        if (opt === "-help") {
+          program.outputHelp();
+          return;
+        }
+        const parentCmd = detectParentCommand(process.argv, opt);
+        write(formatOptionError(opt, name, parentCmd) + "\n");
+        return;
+      }
+
+      write(str);
+    },
+  });
+
+  configureProgramHelp(program, name);
 
   return program;
 }

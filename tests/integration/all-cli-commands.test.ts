@@ -6,6 +6,7 @@ import { ConfigStore } from "@/core/config/config-store";
 import { PathResolver } from "@/core/config/path-resolver";
 import { GitCli } from "@/core/git/git-cli";
 import { execProcess } from "@/utils/proc";
+import { GITBRIDGE_VERSION } from "@/version";
 
 // Commands
 import { handleSetupCommand } from "@/cli/commands/setup";
@@ -427,7 +428,7 @@ describe("🌟 Complete End-to-End Test for All GitBridge Commands", () => {
     // 1. Version
     const verRes = await execProcess("bun", ["run", cliBin, "--version"], { env });
     expect(verRes.exitCode).toBe(0);
-    expect(verRes.stdout).toContain("0.2.6");
+    expect(verRes.stdout).toContain(GITBRIDGE_VERSION);
 
     // 2. Help
     const helpRes = await execProcess("bun", ["run", cliBin, "--help"], { env });

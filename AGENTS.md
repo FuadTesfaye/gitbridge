@@ -145,6 +145,7 @@ GitBridge provides dual binaries: `gitbridge` (verbose) and `gb` (fast shorthand
 - `gb env` (`gitbridge env`): Print shell environment export statements (`GIT_AUTHOR_NAME`, `GIT_SSH_COMMAND`, etc.).
 - `gb clone <url> [dir] [-i id] [-a acc] [-e email]` (`gitbridge clone`): Smart clone with automated account access detection (namespace ownership, API token probe, SSH key routing) and persistent repository binding.
 - `gb doc` (`gitbridge doctor`): Run comprehensive diagnostics on Git CLI, keyrings, SSH keys, and provider APIs.
+- `gb update` (`gb upgrade`): Check for and install the latest version of GitBridge from npm (`-c, --check` to check without installing).
 - `gb completion [bash|zsh|fish]`: Generate shell autocompletion script.
 
 ### Identity Management

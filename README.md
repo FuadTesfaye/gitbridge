@@ -307,6 +307,7 @@ eval "$(gb completion bash)"   # or zsh / fish
 | `gb sec scan`| `gb security scan` | `[path]` | Scan directory tree for private keys, API tokens, and `.env` files |
 | `gb override` | `gb override` | `enable \| disable \| status` | Transparently intercept standard `git` binary |
 | `gb ide` | `gb ide` | `sync \| unsync \| status` | Sync Git path & terminal env with VS Code / Cursor / Antigravity |
+| `gb update` | `gitbridge update` | `[-c, --check] [-f, --force]` | Check for and install the latest GitBridge release from npm |
 | `gb completion`| `gb completion` | `[bash \| zsh \| fish]` | Generate shell autocompletion script |
 
 ---
