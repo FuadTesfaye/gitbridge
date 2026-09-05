@@ -39,6 +39,7 @@ import {
   handleIdeStatusCommand,
 } from "./commands/ide";
 import { configureProgramHelp } from "./ui/help";
+import { GITBRIDGE_VERSION } from "@/version";
 
 export function createProgram(name = "gitbridge"): Command {
   const program = new Command();
@@ -46,7 +47,7 @@ export function createProgram(name = "gitbridge"): Command {
   program
     .name(name)
     .description("Universal Git Identity & Multi-Account Management Layer")
-    .version("0.2.5");
+    .version(GITBRIDGE_VERSION);
 
   configureProgramHelp(program, name);
 

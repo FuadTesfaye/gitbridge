@@ -24,7 +24,7 @@ export function isWindows(): boolean {
 }
 
 export function getHomeDir(): string {
-  return os.homedir();
+  return process.env.HOME || process.env.USERPROFILE || os.homedir();
 }
 
 export function expandTilde(filepath: string): string {

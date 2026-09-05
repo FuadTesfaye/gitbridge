@@ -1,5 +1,6 @@
 import pc from "picocolors";
 import { Command } from "commander";
+import { GITBRIDGE_VERSION } from "@/version";
 
 interface HelpRow {
   name: string;
@@ -22,7 +23,7 @@ function renderRow(row: HelpRow, width: number = 24): string {
   return `    ${colored}${spaces}${pc.white(row.desc)}`;
 }
 
-export function formatRootHelp(programName: string = "gitbridge", version: string = "0.2.5"): string {
+export function formatRootHelp(programName: string = "gitbridge", version: string = GITBRIDGE_VERSION): string {
   const isGb = programName === "gb";
   const header = (title: string) => pc.bold(pc.yellow(title));
 
