@@ -90,6 +90,27 @@ describe("ConfigStore", () => {
     expect(store.loadAccounts().length).toBe(0);
   });
 
+  it("adds and loads accounts with null fields safely", () => {
+    store.addAccount({
+      id: "gh_with_nulls",
+      providerId: "github",
+      host: "github.com",
+      username: "user_null",
+      displayName: null,
+      email: null,
+      identityId: null,
+      authType: "oauth",
+      sshKeyPath: null,
+      sshPort: null,
+    });
+
+    const accounts = store.loadAccounts();
+    expect(accounts.length).toBe(1);
+    expect(accounts[0].username).toBe("user_null");
+    expect(accounts[0].displayName).toBeUndefined();
+    expect(accounts[0].email).toBeUndefined();
+  });
+
   it("updates and removes identities, managing default state", () => {
     store.addIdentity({ id: "id1", name: "User 1", email: "1@test.com" });
     store.addIdentity({ id: "id2", name: "User 2", email: "2@test.com" });

@@ -57,9 +57,9 @@ export class GitHubProvider implements GitProvider {
     const res = await requestJson<{
       id: number;
       login: string;
-      name?: string;
-      email?: string;
-      avatar_url?: string;
+      name?: string | null;
+      email?: string | null;
+      avatar_url?: string | null;
       message?: string;
     }>(`${api}/user`, "GET", undefined, {
       headers: {
@@ -72,12 +72,37 @@ export class GitHubProvider implements GitProvider {
       throw new ProviderError(res.data.message || `Failed to fetch user (status: ${res.status})`, this.name);
     }
 
+    let email: string | undefined = res.data.email || undefined;
+    if (!email) {
+      try {
+        const emailsRes = await requestJson<
+          Array<{ email: string; primary?: boolean; verified?: boolean; visibility?: string | null }>
+        >(`${api}/user/emails`, "GET", undefined, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        });
+        if (emailsRes.status === 200 && Array.isArray(emailsRes.data)) {
+          const primary =
+            emailsRes.data.find((e) => e.primary && e.verified) ||
+            emailsRes.data.find((e) => e.primary) ||
+            emailsRes.data[0];
+          if (primary?.email) {
+            email = primary.email;
+          }
+        }
+      } catch {
+        // Fallback: /user/emails is best-effort (e.g. if token scope doesn't include user:email)
+      }
+    }
+
     return {
       id: String(res.data.id),
       username: res.data.login,
-      displayName: res.data.name || res.data.login,
-      email: res.data.email,
-      avatarUrl: res.data.avatar_url,
+      displayName: (res.data.name && res.data.name.trim()) || res.data.login,
+      email,
+      avatarUrl: res.data.avatar_url || undefined,
     };
   }
 

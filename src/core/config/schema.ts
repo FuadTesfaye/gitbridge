@@ -17,16 +17,18 @@ export const GitIdentitySchema = z.object({
   isDefault: z.boolean().optional().default(false),
   defaults: z
     .object({
-      provider: GitProviderTypeSchema.optional(),
-      account: z.string().optional(),
+      provider: GitProviderTypeSchema.nullish().transform((v) => v ?? undefined),
+      account: z.string().nullish().transform((v) => v ?? undefined),
     })
-    .optional(),
+    .nullish()
+    .transform((v) => v ?? undefined),
   ssh: z
     .object({
-      keyPath: z.string().optional(),
-      hostAlias: z.string().optional(),
+      keyPath: z.string().nullish().transform((v) => v ?? undefined),
+      hostAlias: z.string().nullish().transform((v) => v ?? undefined),
     })
-    .optional(),
+    .nullish()
+    .transform((v) => v ?? undefined),
   createdAt: z.string().datetime().optional().default(() => new Date().toISOString()),
 });
 export type GitIdentity = z.infer<typeof GitIdentitySchema>;
@@ -42,12 +44,12 @@ export const ProviderAccountSchema = z.object({
   providerId: GitProviderTypeSchema,
   host: z.string().min(1),
   username: z.string().min(1),
-  displayName: z.string().optional(),
-  email: z.string().optional(),
-  identityId: z.string().optional(),
+  displayName: z.string().nullish().transform((v) => v ?? undefined),
+  email: z.string().nullish().transform((v) => v ?? undefined),
+  identityId: z.string().nullish().transform((v) => v ?? undefined),
   authType: AuthTypeSchema,
-  sshKeyPath: z.string().optional(),
-  sshPort: z.number().optional(),
+  sshKeyPath: z.string().nullish().transform((v) => v ?? undefined),
+  sshPort: z.number().nullish().transform((v) => v ?? undefined),
   createdAt: z.string().datetime().optional().default(() => new Date().toISOString()),
 });
 export type ProviderAccount = z.infer<typeof ProviderAccountSchema>;
@@ -62,8 +64,8 @@ export const DirectoryRuleSchema = z.object({
   id: z.string().min(1),
   path: z.string().min(1),
   identityId: z.string().min(1),
-  defaultProvider: GitProviderTypeSchema.optional(),
-  defaultAccountId: z.string().optional(),
+  defaultProvider: GitProviderTypeSchema.nullish().transform((v) => v ?? undefined),
+  defaultAccountId: z.string().nullish().transform((v) => v ?? undefined),
 });
 export type DirectoryRule = z.infer<typeof DirectoryRuleSchema>;
 
@@ -75,16 +77,16 @@ export const GitBridgeSettingsSchema = z.object({
   commitIdentitySafety: z.boolean().default(true),
   fallbackEncryptedStore: z.boolean().default(false),
   overrideEnabled: z.boolean().default(false),
-  realGitPath: z.string().optional(),
+  realGitPath: z.string().nullish().transform((v) => v ?? undefined),
 });
 export type GitBridgeSettings = z.infer<typeof GitBridgeSettingsSchema>;
 
 // Provider Configuration
 export const ProviderConfigSchema = z.object({
   enabled: z.boolean().default(true),
-  defaultAccount: z.string().optional(),
-  customHost: z.string().optional(),
-  type: GitProviderTypeSchema.optional(),
+  defaultAccount: z.string().nullish().transform((v) => v ?? undefined),
+  customHost: z.string().nullish().transform((v) => v ?? undefined),
+  type: GitProviderTypeSchema.nullish().transform((v) => v ?? undefined),
 });
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 
@@ -94,17 +96,17 @@ export const CustomProviderSchema = z.object({
   name: z.string().min(1),
   host: z.string().min(1),
   type: GitProviderTypeSchema.default("custom"),
-  apiBaseUrl: z.string().url().optional(),
+  apiBaseUrl: z.string().url().nullish().transform((v) => v ?? undefined),
 });
 export type CustomProvider = z.infer<typeof CustomProviderSchema>;
 
 // Main Configuration
 export const MainConfigSchema = z.object({
-  $schema: z.string().optional(),
+  $schema: z.string().nullish().transform((v) => v ?? undefined),
   version: z.string().default("1.0.0"),
   enabled: z.boolean().default(true),
-  defaultIdentityId: z.string().nullable().optional().default(null),
-  defaultProvider: GitProviderTypeSchema.optional(),
+  defaultIdentityId: z.string().nullish().transform((v) => v ?? null),
+  defaultProvider: GitProviderTypeSchema.nullish().transform((v) => v ?? undefined),
   providers: z
     .record(z.string(), ProviderConfigSchema)
     .default({ github: { enabled: true } }),
@@ -119,16 +121,16 @@ export const RepositoryRemoteSchema = z.object({
   name: z.string().min(1),
   providerId: GitProviderTypeSchema,
   host: z.string().min(1),
-  accountId: z.string().optional(),
+  accountId: z.string().nullish().transform((v) => v ?? undefined),
   url: z.string().min(1),
-  rawUrl: z.string().optional(),
+  rawUrl: z.string().nullish().transform((v) => v ?? undefined),
 });
 export type RepositoryRemote = z.infer<typeof RepositoryRemoteSchema>;
 
 // Repository Profile
 export const RepositoryProfileSchema = z.object({
   path: z.string().min(1),
-  identityId: z.string().optional(),
+  identityId: z.string().nullish().transform((v) => v ?? undefined),
   remotes: z.array(RepositoryRemoteSchema).default([]),
   safetyHookInstalled: z.boolean().optional().default(false),
   updatedAt: z.string().datetime().optional().default(() => new Date().toISOString()),
@@ -142,10 +144,10 @@ export type RepositoriesFile = z.infer<typeof RepositoriesFileSchema>;
 
 // Local Repository Override (.git/gitbridge.json)
 export const LocalRepoConfigSchema = z.object({
-  profile: z.string().optional(),
-  identityId: z.string().optional(),
-  providerId: GitProviderTypeSchema.optional(),
-  accountId: z.string().optional(),
+  profile: z.string().nullish().transform((v) => v ?? undefined),
+  identityId: z.string().nullish().transform((v) => v ?? undefined),
+  providerId: GitProviderTypeSchema.nullish().transform((v) => v ?? undefined),
+  accountId: z.string().nullish().transform((v) => v ?? undefined),
 });
 export type LocalRepoConfig = z.infer<typeof LocalRepoConfigSchema>;
 

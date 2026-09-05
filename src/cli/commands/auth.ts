@@ -144,10 +144,10 @@ export async function handleAuthLogin(
       providerId: targetProvider,
       host: cleanHost,
       username,
-      displayName: user.displayName,
-      email: user.email,
-      authType: "oauth",
-      sshKeyPath,
+      displayName: user.displayName || undefined,
+      email: user.email || undefined,
+      authType: options.password ? "password" : options.token ? "pat" : "oauth",
+      sshKeyPath: sshKeyPath || undefined,
     });
 
     // Save token in secure store

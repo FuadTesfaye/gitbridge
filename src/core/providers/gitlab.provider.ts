@@ -75,9 +75,9 @@ export class GitLabProvider implements GitProvider {
     const res = await requestJson<{
       id: number;
       username: string;
-      name?: string;
-      email?: string;
-      avatar_url?: string;
+      name?: string | null;
+      email?: string | null;
+      avatar_url?: string | null;
       message?: string;
     }>(`${api}/user`, "GET", undefined, {
       headers: this.getAuthHeader(token),
@@ -87,12 +87,26 @@ export class GitLabProvider implements GitProvider {
       throw new ProviderError(res.data.message || `Failed to fetch GitLab user (status: ${res.status})`, this.name);
     }
 
+    let email: string | undefined = res.data.email || undefined;
+    if (!email) {
+      try {
+        const emailsRes = await requestJson<Array<{ email: string }>>(`${api}/user/emails`, "GET", undefined, {
+          headers: this.getAuthHeader(token),
+        });
+        if (emailsRes.status === 200 && Array.isArray(emailsRes.data) && emailsRes.data.length > 0) {
+          email = emailsRes.data[0].email;
+        }
+      } catch {
+        // Best effort
+      }
+    }
+
     return {
       id: String(res.data.id),
       username: res.data.username,
-      displayName: res.data.name || res.data.username,
-      email: res.data.email,
-      avatarUrl: res.data.avatar_url,
+      displayName: (res.data.name && res.data.name.trim()) || res.data.username,
+      email,
+      avatarUrl: res.data.avatar_url || undefined,
     };
   }
 

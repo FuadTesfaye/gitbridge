@@ -28,12 +28,12 @@ export interface CreateAccountInput {
   providerId: ProviderAccount["providerId"];
   host: string;
   username: string;
-  displayName?: string;
-  email?: string;
-  identityId?: string;
+  displayName?: string | null;
+  email?: string | null;
+  identityId?: string | null;
   authType: ProviderAccount["authType"];
-  sshKeyPath?: string;
-  sshPort?: number;
+  sshKeyPath?: string | null;
+  sshPort?: number | null;
 }
 
 export interface SaveRepositoryProfileInput {
@@ -302,6 +302,11 @@ export class ConfigStore {
     const existingIndex = list.findIndex((a) => a.id === account.id);
     const newAccount: ProviderAccount = {
       ...account,
+      displayName: account.displayName ?? undefined,
+      email: account.email ?? undefined,
+      identityId: account.identityId ?? undefined,
+      sshKeyPath: account.sshKeyPath ?? undefined,
+      sshPort: account.sshPort ?? undefined,
       createdAt: new Date().toISOString(),
     };
 

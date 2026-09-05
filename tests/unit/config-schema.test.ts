@@ -70,4 +70,32 @@ describe("Config Schemas", () => {
     expect(parsed.rules).toEqual([]);
     expect(parsed.settings.credentialHelperEnabled).toBe(true);
   });
+
+  it("handles null values cleanly in ProviderAccountSchema and AccountsFileSchema without throwing", async () => {
+    const { AccountsFileSchema } = await import("@/core/config/schema");
+    const accountWithNulls = {
+      id: "github_moahmed325",
+      providerId: "github",
+      host: "github.com",
+      username: "moahmed325",
+      displayName: null,
+      email: null,
+      identityId: null,
+      authType: "oauth",
+      sshKeyPath: null,
+      sshPort: null,
+    };
+
+    const parsed = ProviderAccountSchema.parse(accountWithNulls);
+    expect(parsed.id).toBe("github_moahmed325");
+    expect(parsed.email).toBeUndefined();
+    expect(parsed.displayName).toBeUndefined();
+    expect(parsed.sshKeyPath).toBeUndefined();
+
+    const fileParsed = AccountsFileSchema.parse({
+      accounts: [accountWithNulls],
+    });
+    expect(fileParsed.accounts.length).toBe(1);
+    expect(fileParsed.accounts[0].email).toBeUndefined();
+  });
 });
