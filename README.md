@@ -527,7 +527,9 @@ gb doc
 GitBridge is developed in **TypeScript** and built with **Bun**:
 
 ```bash
-# Run the complete test suite (225 tests across 39 suites)
+# Run the complete test suite. It runs against a throwaway home directory
+# (tests/setup/isolate-home.ts) and never touches your real ~/.gitconfig,
+# ~/.ssh/config, shell profiles or editor settings.
 bun test
 
 # Typecheck codebase without emitting files

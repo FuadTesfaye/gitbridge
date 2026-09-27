@@ -295,7 +295,7 @@ export class BridgeService {
     const git = new GitCli();
     const gitVersion = await git.getGitVersion();
     const credStore = await StoreFactory.getStore(this.store.getPathResolver());
-    const sshKeys = SshKeyDetector.listAvailableKeys();
+    const sshKeys = SshKeyDetector.listAvailableKeys(this.store.getPathResolver().getUserSshDir());
     const providers = defaultProviderRegistry.list();
     const overrideStatus = this.overrideManager.getOverrideStatus();
 

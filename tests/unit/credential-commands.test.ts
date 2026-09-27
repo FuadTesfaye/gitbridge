@@ -60,9 +60,15 @@ describe("Credential Commands Unit Tests", () => {
     expect(erased).toBeNull();
   });
 
-  it("runs handleCredentialCommand with provided stdinData string", async () => {
-    await handleCredentialCommand("store", "protocol=https\nhost=bitbucket.org\nusername=bb\npassword=bbpass\n");
-    await handleCredentialCommand("get", "protocol=https\nhost=bitbucket.org\nusername=bb\n");
-    await handleCredentialCommand("erase", "protocol=https\nhost=bitbucket.org\nusername=bb\n");
+  it("runs handleCredentialCommand against the injected store, never the default one", async () => {
+    const credStore = await StoreFactory.getStore(paths);
+
+    await handleCredentialCommand("store", "protocol=https\nhost=bitbucket.org\nusername=bb\npassword=bbpass\n", store);
+    expect(await credStore.get("bitbucket.org", "bitbucket_org_bb")).toBe("bbpass");
+
+    await handleCredentialCommand("get", "protocol=https\nhost=bitbucket.org\nusername=bb\n", store);
+
+    await handleCredentialCommand("erase", "protocol=https\nhost=bitbucket.org\nusername=bb\n", store);
+    expect(await credStore.get("bitbucket.org", "bitbucket_org_bb")).toBeNull();
   });
 });

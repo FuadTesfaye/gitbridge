@@ -6,8 +6,12 @@ import { IdentityGuard } from "@/core/safety/identity-guard";
 import { SecretScanner, type StagedSecretViolation, type RemoteCredentialViolation } from "@/core/safety/secret-scanner";
 import { StoreFactory } from "@/core/storage/store-factory";
 import { GitCli } from "@/core/git/git-cli";
+import { GitConfigInjector } from "@/core/git/gitconfig-injector";
+import { detectProviderType } from "@/core/git/url-parser";
 import { expandTilde, isWindows } from "@/utils/platform";
 import { redactSecret, redactRemoteUrl } from "@/utils/security";
+import { hostsEqual } from "@/utils/hosts";
+import type { ProviderAccount } from "@/core/config/schema";
 
 export interface PermissionIssue {
   path: string;
@@ -256,6 +260,24 @@ export async function handleSecurityCheck(cwd: string = process.cwd(), store: Co
   }
 }
 
+/**
+ * The credential helper only answers requests for hosts that have a registered
+ * account. A token scrubbed out of a remote URL therefore needs an account
+ * record too, otherwise git can never get it back and the next push fails.
+ */
+export function ensureScrubbedAccount(store: ConfigStore, host: string, username: string): ProviderAccount {
+  const existing = store.loadAccounts().find((a) => hostsEqual(a.host, host) && a.username === username);
+  if (existing) return existing;
+
+  return store.addAccount({
+    id: `${host.replace(/[^a-zA-Z0-9]/g, "_")}_${username}`,
+    providerId: detectProviderType(host),
+    host,
+    username,
+    authType: "pat",
+  });
+}
+
 export async function handleSecurityFix(cwd: string = process.cwd(), store: ConfigStore = defaultConfigStore) {
   const auditor = new SecurityAuditor(store);
   const scanner = new SecretScanner();
@@ -287,21 +309,31 @@ export async function handleSecurityFix(cwd: string = process.cwd(), store: Conf
     if (remoteViolations.length > 0) {
       const credStore = await StoreFactory.getStore(store.getPathResolver());
       for (const rv of remoteViolations) {
-        if (rv.tokenOrPassword) {
-          // Clean URL by stripping username:password@
-          const cleanUrl = rv.url.replace(/^(https?:\/\/)[^@]+@/, "$1");
-          await git.setRemoteUrl(rv.name, cleanUrl);
+        if (!rv.tokenOrPassword) continue;
 
-          // Store token in OS Keyring
-          const matchHost = cleanUrl.match(/^https?:\/\/([^/:]+)/i);
-          const host = matchHost ? matchHost[1] : "git-remote";
-          const user = rv.username || "token";
-          const existing = store.loadAccounts().find((a) => a.host === host && a.username === user);
-          const accountId = existing ? existing.id : `${host.replace(/[^a-zA-Z0-9]/g, "_")}_${user}`;
-          await credStore.set(host, accountId, rv.tokenOrPassword);
+        // Clean URL by stripping username:password@
+        const cleanUrl = rv.url.replace(/^(https?:\/\/)[^@]+@/, "$1");
+        await git.setRemoteUrl(rv.name, cleanUrl);
 
-          console.log(`  ${pc.green("✔")} Scrubbed plaintext token from remote '${pc.cyan(rv.name)}' into secure Keyring.`);
-        }
+        // Register (or reuse) an account for the host, then store the token
+        // under that account so the credential helper can hand it back to git.
+        const matchHost = cleanUrl.match(/^https?:\/\/([^/]+)/i);
+        const host = matchHost ? matchHost[1] : "git-remote";
+        const user = rv.username || "token";
+        const account = ensureScrubbedAccount(store, host, user);
+        await credStore.set(account.host, account.id, rv.tokenOrPassword);
+
+        console.log(
+          `  ${pc.green("✔")} Scrubbed plaintext token from remote '${pc.cyan(rv.name)}' into secure Keyring (account '${pc.cyan(account.id)}').`
+        );
+      }
+
+      if (!new GitConfigInjector(store).isInstalled()) {
+        console.log(
+          pc.yellow(`  ⚠ The GitBridge credential helper is not active in ~/.gitconfig. Run '`) +
+            pc.cyan("gb enable") +
+            pc.yellow("' or HTTPS pushes will prompt for the scrubbed credentials.")
+        );
       }
     }
   }

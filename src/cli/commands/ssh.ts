@@ -8,12 +8,11 @@ import { ConfigStore, defaultConfigStore } from "@/core/config/config-store";
 import { promptSelect, promptText, promptConfirm } from "../ui/prompts";
 import { execProcess } from "@/utils/proc";
 import { logger } from "@/utils/logger";
-import { getHomeDir } from "@/utils/platform";
 import { isSafeSshKeyBasename, isSafeSshIdentityFile, sanitizeSshKeyPath } from "@/utils/security";
 import { promptPassword } from "../ui/prompts";
 
 export async function handleSshList(store: ConfigStore = defaultConfigStore) {
-  const keys = SshKeyDetector.listAvailableKeys();
+  const keys = SshKeyDetector.listAvailableKeys(store.getPathResolver().getUserSshDir());
   const accounts = store.loadAccounts();
 
   console.log(pc.bold("\n  SSH KEYS"));
@@ -54,8 +53,7 @@ export async function handleSshGenerate(
   console.log(pc.bold("\n  GENERATE SSH KEY"));
   console.log("  ──────────────────────────────────────────────────");
 
-  const home = getHomeDir();
-  const sshDir = path.join(home, ".ssh");
+  const sshDir = store.getPathResolver().getUserSshDir();
   if (!fs.existsSync(sshDir)) {
     fs.mkdirSync(sshDir, { recursive: true, mode: 0o700 });
   }
@@ -159,7 +157,7 @@ export async function handleSshLink(
   accountIdArg?: string,
   store: ConfigStore = defaultConfigStore
 ) {
-  const keys = SshKeyDetector.listAvailableKeys();
+  const keys = SshKeyDetector.listAvailableKeys(store.getPathResolver().getUserSshDir());
   const accounts = store.loadAccounts();
 
   if (keys.length === 0) {

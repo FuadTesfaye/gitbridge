@@ -20,7 +20,7 @@ describe("Git Override End-to-End Integration", () => {
     workDir = path.join(tempDir, "work-projects", "api-service");
     fs.mkdirSync(workDir, { recursive: true });
 
-    const paths = new PathResolver(path.join(tempDir, ".gitbridge"));
+    const paths = new PathResolver(path.join(tempDir, ".gitbridge"), tempDir);
     store = new ConfigStore(paths);
     overrideManager = new GitOverrideManager(store);
     proxy = new GitProxy(store);
@@ -84,6 +84,55 @@ describe("Git Override End-to-End Integration", () => {
     const secondLog = await git.exec(["log", "-1", "--format=%an <%ae>"]);
     // Since override is disabled, it preserved the local git repo's native author!
     expect(secondLog.stdout).toBe("Initial Name <initial@domain.com>");
+  });
+
+  /** Installs shims for a store whose config dir is <xdg>/gitbridge and puts a fake `gitbridge` on PATH. */
+  function setupXdgShim() {
+    const xdg = path.join(tempDir, "xdg");
+    const xdgStore = new ConfigStore(new PathResolver(path.join(xdg, "gitbridge"), tempDir));
+    const xdgManager = new GitOverrideManager(xdgStore);
+    xdgStore.setOverrideEnabled(true); // writes <xdg>/gitbridge/override.active
+    xdgManager.installShims(xdgManager.findRealGitPath() || "/usr/bin/git");
+
+    const fakeBin = path.join(tempDir, "fakebin");
+    fs.mkdirSync(fakeBin, { recursive: true });
+    fs.writeFileSync(path.join(fakeBin, "gitbridge"), '#!/bin/sh\necho "PROXIED $*"\n', { mode: 0o755 });
+
+    const env = { ...process.env } as Record<string, string>;
+    delete env.GITBRIDGE_HOME;
+    delete env.XDG_CONFIG_HOME;
+    env.PATH = `${fakeBin}:${process.env.PATH}`;
+    return { xdg, shimPath: xdgStore.getPathResolver().getGitShimPath(), env };
+  }
+
+  it("shim resolves the config dir from XDG_CONFIG_HOME when GITBRIDGE_HOME is unset", () => {
+    if (process.platform === "win32") return;
+    const { xdg, shimPath, env } = setupXdgShim();
+    env.XDG_CONFIG_HOME = xdg;
+
+    const res = Bun.spawnSync([shimPath, "status"], { cwd: workDir, env });
+    expect(res.exitCode).toBe(0);
+    expect(res.stdout.toString()).toContain("PROXIED git-proxy status");
+  });
+
+  it("shim falls back to the directory it was generated for when neither variable is set", () => {
+    if (process.platform === "win32") return;
+    const { shimPath, env } = setupXdgShim();
+
+    const res = Bun.spawnSync([shimPath, "status"], { cwd: workDir, env });
+    expect(res.exitCode).toBe(0);
+    expect(res.stdout.toString()).toContain("PROXIED git-proxy status");
+  });
+
+  it("shim lets GITBRIDGE_HOME take precedence and bypasses when that dir has no override.active", () => {
+    if (process.platform === "win32") return;
+    const { shimPath, env } = setupXdgShim();
+    env.GITBRIDGE_HOME = path.join(tempDir, "elsewhere");
+
+    const res = Bun.spawnSync([shimPath, "config", "user.name"], { cwd: workDir, env });
+    expect(res.exitCode).toBe(0);
+    expect(res.stdout.toString()).not.toContain("PROXIED");
+    expect(res.stdout.toString().trim()).toBe("Initial Name");
   });
 
   it("shim script directly executes real git when override is inactive", async () => {

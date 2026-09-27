@@ -131,7 +131,7 @@ export async function handleAuthLogin(
       sshKeyPath = undefined;
     }
     if (!sshKeyPath) {
-      const availableKeys = SshKeyDetector.listAvailableKeys();
+      const availableKeys = SshKeyDetector.listAvailableKeys(store.getPathResolver().getUserSshDir());
       if (availableKeys.length > 0) {
         const linkKey = await promptConfirm({
           message: `Do you want to link an SSH key for this ${provider.name} account?`,

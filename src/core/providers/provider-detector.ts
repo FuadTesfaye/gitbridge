@@ -4,7 +4,6 @@ import { GitCli } from "../git/git-cli";
 import { ConfigStore, defaultConfigStore } from "../config/config-store";
 import { SshKeyDetector } from "../ssh/ssh-key-detector";
 import { parseRemoteUrl } from "../git/url-parser";
-import { getHomeDir } from "@/utils/platform";
 import { hostsEqual, textContainsHost } from "@/utils/hosts";
 import type { GitProviderType } from "../config/schema";
 
@@ -88,10 +87,11 @@ export class ProviderDetector {
    * to detect which Git providers the user actually interacts with.
    */
   async detectSystemProviders(): Promise<SystemEnvironmentDiscovery> {
-    const home = getHomeDir();
+    const paths = this.store.getPathResolver();
+    const home = paths.getHomeDir();
     const git = new GitCli();
     const gitVersion = await git.getGitVersion();
-    const sshKeys = SshKeyDetector.listAvailableKeys().map((k) => k.name);
+    const sshKeys = SshKeyDetector.listAvailableKeys(paths.getUserSshDir()).map((k) => k.name);
 
     let existingGitName: string | undefined;
     let existingGitEmail: string | undefined;

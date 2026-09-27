@@ -83,7 +83,7 @@ export async function handleDoctorCommand(store: ConfigStore = defaultConfigStor
   }
 
   // 4. SSH Keys
-  const sshKeys = SshKeyDetector.listAvailableKeys();
+  const sshKeys = SshKeyDetector.listAvailableKeys(store.getPathResolver().getUserSshDir());
   console.log(pc.bold("\n  4. Discovered SSH Keys"));
   if (sshKeys.length > 0) {
     for (const key of sshKeys) {

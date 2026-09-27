@@ -16,7 +16,7 @@ describe("IdeSyncManager", () => {
     tempDir = path.join(os.tmpdir(), `gitbridge-ide-test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
     fs.mkdirSync(tempDir, { recursive: true });
 
-    const paths = new PathResolver(path.join(tempDir, ".gitbridge"));
+    const paths = new PathResolver(path.join(tempDir, ".gitbridge"), tempDir);
     store = new ConfigStore(paths);
     manager = new IdeSyncManager(store);
 
@@ -76,15 +76,26 @@ describe("IdeSyncManager", () => {
     expect(restored["gitbridge.managed"]).toBeUndefined();
   });
 
-  it("executes syncAll and unsyncAll cleanly without errors", () => {
+  it("discovers editor settings only inside the sandbox home", () => {
+    for (const target of manager.getDiscoveredIdeTargets()) {
+      expect(target.settingsPath.startsWith(tempDir)).toBe(true);
+    }
+  });
+
+  it("syncAll and unsyncAll only touch editors discovered inside the sandbox home", () => {
+    const vscode = manager.getDiscoveredIdeTargets().find((t) => t.type === "vscode")!;
+    fs.mkdirSync(path.dirname(vscode.settingsPath), { recursive: true });
+    fs.writeFileSync(vscode.settingsPath, JSON.stringify({ "editor.fontSize": 12 }, null, 2));
+
     const syncRes = manager.syncAll();
-    expect(syncRes).toBeDefined();
-    expect(Array.isArray(syncRes.synced)).toBe(true);
-    expect(Array.isArray(syncRes.targets)).toBe(true);
+    expect(syncRes.synced).toContain("Visual Studio Code");
+    const synced = JSON.parse(fs.readFileSync(vscode.settingsPath, "utf-8"));
+    expect(synced["git.path"]).toBe(store.getPathResolver().getGitShimPath());
 
     const unsyncRes = manager.unsyncAll();
-    expect(unsyncRes).toBeDefined();
-    expect(Array.isArray(unsyncRes.unsynced)).toBe(true);
-    expect(Array.isArray(unsyncRes.targets)).toBe(true);
+    expect(unsyncRes.unsynced).toContain("Visual Studio Code");
+    const restored = JSON.parse(fs.readFileSync(vscode.settingsPath, "utf-8"));
+    expect(restored["git.path"]).toBeUndefined();
+    expect(restored["editor.fontSize"]).toBe(12);
   });
 });

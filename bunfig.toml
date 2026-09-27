@@ -2,5 +2,5 @@
 lockfile = true
 
 [test]
-preload = ["./extension/test/preload.ts"]
+preload = ["./tests/setup/isolate-home.ts", "./extension/test/preload.ts"]
 coverage = true

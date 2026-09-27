@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { ConfigStore, defaultConfigStore } from "../config/config-store";
-import { getHomeDir } from "@/utils/platform";
 import { parseJsonc } from "@/utils/jsonc";
 
 export interface IdeTarget {
@@ -31,7 +30,8 @@ export class IdeSyncManager {
    * Discovers all supported IDE settings paths on the current platform.
    */
   getDiscoveredIdeTargets(): IdeTarget[] {
-    const home = getHomeDir();
+    const paths = this.store.getPathResolver();
+    const home = paths.getHomeDir();
     const platform = process.platform;
     const targets: IdeTarget[] = [];
 
@@ -49,12 +49,13 @@ export class IdeSyncManager {
       if (platform === "darwin") {
         settingsPath = path.join(home, "Library", "Application Support", ide.dirName, "User", "settings.json");
       } else if (platform === "win32") {
-        const appData = process.env.APPDATA || path.join(home, "AppData", "Roaming");
+        const appData = paths.hasExplicitHomeDir()
+          ? path.join(home, "AppData", "Roaming")
+          : process.env.APPDATA || path.join(home, "AppData", "Roaming");
         settingsPath = path.join(appData, ide.dirName, "User", "settings.json");
       } else {
         // Linux / Debian / Arch / Ubuntu
-        const configBase = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
-        settingsPath = path.join(configBase, ide.dirName, "User", "settings.json");
+        settingsPath = path.join(paths.getUserConfigDir(), ide.dirName, "User", "settings.json");
       }
 
       targets.push({

@@ -232,6 +232,6 @@ bun run bin/gb.ts st
 ## 7. Guidelines for AI Assistants
 
 When developing, testing, or debugging GitBridge:
-1. **Never mutate the user's live Git/SSH environment directly during tests**: Always instantiate `ConfigStore` with an isolated temporary directory via `PathResolver(tmpDir)` or set `GITBRIDGE_HOME=/tmp/test-gitbridge`.
+1. **Never mutate the user's live Git/SSH environment directly during tests**: Always instantiate `ConfigStore` with an isolated temporary directory via `PathResolver(tmpDir)` or set `GITBRIDGE_HOME=/tmp/test-gitbridge`. When the code under test touches `~/.gitconfig`, `~/.ssh`, shell profiles or editor settings, also pass a sandbox home as the second argument: `new PathResolver(tmpDir, tmpHome)`. `bun test` preloads `tests/setup/isolate-home.ts`, which points `HOME`, `XDG_CONFIG_HOME` and `GITBRIDGE_HOME` at a throwaway directory for the whole run as a last line of defence.
 2. **Preserve Native Git Interoperability**: Any change to `src/core/git/` or `src/core/ssh/` must ensure standard `git` and `ssh` commands remain 100% compliant with native Git/SSH behavior.
 3. **Respect Progressive Disclosure**: For detailed operational workflows, refer to the Antigravity Skill at [`.agents/skills/gitbridge/SKILL.md`](file:///.agents/skills/gitbridge/SKILL.md) and reference documents in [`.agents/skills/gitbridge/references/`](file:///.agents/skills/gitbridge/references/).

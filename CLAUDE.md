@@ -79,6 +79,6 @@ bun run bin/gb.ts --help
 
 ## 4. Coding & Architecture Rules
 
-1. **Do not mutate live Git/SSH environment in tests**: Always use isolated test dirs via `PathResolver(tmpDir)`.
+1. **Do not mutate live Git/SSH environment in tests**: Always use isolated test dirs via `PathResolver(tmpDir)`, and pass a sandbox home as the second argument (`PathResolver(tmpDir, tmpHome)`) when the code touches `~/.gitconfig`, `~/.ssh`, shell profiles or editor settings. `bun test` preloads `tests/setup/isolate-home.ts` so the whole run uses a throwaway home.
 2. **Preserve native Git compatibility**: Ensure zero wrappers are required for standard Git operations.
 3. **Strict permissions**: Always enforce `0700` on directories and `0600` on sensitive configuration files.

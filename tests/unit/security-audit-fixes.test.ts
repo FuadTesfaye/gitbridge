@@ -8,6 +8,9 @@ import { ConfigStore } from "@/core/config/config-store";
 import { PathResolver } from "@/core/config/path-resolver";
 import { IdentityResolver } from "@/core/identity/identity-resolver";
 import { SecretScanner } from "@/core/safety/secret-scanner";
+import { GitCli } from "@/core/git/git-cli";
+import { handleSecurityFix } from "@/cli/commands/security";
+import { GitCredentialHelperHandler } from "@/cli/commands/credential";
 
 describe("Security Audit Hardening Tests", () => {
   let tempDir: string;
@@ -122,6 +125,65 @@ describe("Security Audit Hardening Tests", () => {
 
       const ctxInternal = await resolver.resolve(mockRepoDir);
       expect(ctxInternal.identity?.id).toBe("corporate");
+    });
+  });
+
+  describe("Scrubbed remote credentials stay usable", () => {
+    it("registers an account so the credential helper can hand the scrubbed token back to git", async () => {
+      const repo = path.join(tempDir, "scrub-repo");
+      fs.mkdirSync(repo, { recursive: true });
+      const git = new GitCli(repo);
+      await git.exec(["init"]);
+      await git.exec(["config", "user.name", "Scrub Tester"]);
+      await git.exec(["config", "user.email", "scrub@example.com"]);
+      const token = "ghp_FAKEscrubbedTokenForTests000000000";
+      await git.exec(["remote", "add", "origin", `https://alice:${token}@github.com/alice/repo.git`]);
+
+      store.setEnabled(true);
+      await handleSecurityFix(repo, store);
+
+      // The remote no longer carries credentials
+      const remotes = await git.getRemotes();
+      expect(remotes[0].fetchUrl).toBe("https://github.com/alice/repo.git");
+
+      // An account now exists for the host and user found in the URL
+      const account = store.loadAccounts().find((a) => a.host === "github.com" && a.username === "alice");
+      expect(account).toBeDefined();
+      expect(account?.providerId).toBe("github");
+      expect(account?.authType).toBe("pat");
+
+      // So git's credential request for that host is answered with the scrubbed token
+      const helper = new GitCredentialHelperHandler(store);
+      const output = await helper.handleGet("protocol=https\nhost=github.com\nusername=alice\n", repo);
+      expect(output).toContain("username=alice");
+      expect(output).toContain(`password=${token}`);
+    });
+
+    it("reuses an existing account for the same host and user instead of duplicating it", async () => {
+      const repo = path.join(tempDir, "scrub-repo-2");
+      fs.mkdirSync(repo, { recursive: true });
+      const git = new GitCli(repo);
+      await git.exec(["init"]);
+      await git.exec(["remote", "add", "origin", "https://bob:s3cret@gitlab.example.com/group/repo.git"]);
+
+      store.addAccount({
+        id: "gitlab_bob",
+        providerId: "gitlab",
+        host: "gitlab.example.com",
+        username: "bob",
+        authType: "pat",
+      });
+
+      await handleSecurityFix(repo, store);
+
+      const accounts = store.loadAccounts().filter((a) => a.username === "bob");
+      expect(accounts.length).toBe(1);
+      expect(accounts[0].id).toBe("gitlab_bob");
+
+      const helper = new GitCredentialHelperHandler(store);
+      store.setEnabled(true);
+      const output = await helper.handleGet("protocol=https\nhost=gitlab.example.com\nusername=bob\n", repo);
+      expect(output).toContain("password=s3cret");
     });
   });
 

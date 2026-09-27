@@ -129,8 +129,12 @@ export class GitCredentialHelperHandler {
 
 import { readStdin } from "@/utils/proc";
 
-export async function handleCredentialCommand(action: "get" | "store" | "erase", stdinData?: string) {
-  const handler = new GitCredentialHelperHandler();
+export async function handleCredentialCommand(
+  action: "get" | "store" | "erase",
+  stdinData?: string,
+  store: ConfigStore = defaultConfigStore
+) {
+  const handler = new GitCredentialHelperHandler(store);
 
   let input = stdinData;
   if (input === undefined) {

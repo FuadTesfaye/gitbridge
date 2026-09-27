@@ -26,7 +26,7 @@ describe("🌟 Repo Access Auto-Tracking End-to-End Suite", () => {
     gbHome = path.join(tempDir, ".gitbridge");
     fs.mkdirSync(gbHome, { recursive: true });
 
-    const paths = new PathResolver(gbHome);
+    const paths = new PathResolver(gbHome, tempDir);
     store = new ConfigStore(paths);
     resolver = new IdentityResolver(store);
     detector = new RepoAccessDetector(store);

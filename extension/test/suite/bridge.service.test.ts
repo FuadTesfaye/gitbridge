@@ -15,7 +15,12 @@ describe("Extension BridgeService", () => {
   beforeEach(() => {
     tempDir = path.join(os.tmpdir(), `gitbridge-ext-test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
     fs.mkdirSync(tempDir, { recursive: true });
-    const paths = new PathResolver(tempDir);
+    // The second argument seals the sandbox: enable/disable and the override
+    // toggle write to <home>/.gitconfig, .ssh/config and shell profiles in here,
+    // never to the developer's real home directory.
+    const homeDir = path.join(tempDir, "home");
+    fs.mkdirSync(homeDir, { recursive: true });
+    const paths = new PathResolver(path.join(tempDir, ".gitbridge"), homeDir);
     store = new ConfigStore(paths);
     bridge = new BridgeService(store);
   });
@@ -105,8 +110,10 @@ describe("Extension BridgeService", () => {
     bridge.enableProvider("gitlab");
     bridge.disableProvider("gitlab");
 
-    // 4. Injections & status
+    // 4. Injections & status (must land in the sandbox home)
     await bridge.enable();
+    expect(bridge.isGitInstalled()).toBe(true);
+    expect(fs.existsSync(path.join(tempDir, "home", ".gitconfig"))).toBe(true);
     await bridge.disable();
     expect(bridge.isGitInstalled()).toBe(false);
     expect(bridge.isSshInstalled()).toBe(false);
