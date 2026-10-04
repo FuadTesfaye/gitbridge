@@ -47,6 +47,33 @@ describe("GitConfigInjector", () => {
     expect(content).toContain("[include]");
   });
 
+  it("writes into the XDG git config for XDG users and never creates a stray ~/.gitconfig", () => {
+    const home = path.join(tempDir, "xdg-home");
+    const xdgConfig = path.join(home, ".config", "git", "config");
+    fs.mkdirSync(path.dirname(xdgConfig), { recursive: true });
+    fs.writeFileSync(xdgConfig, "[user]\n\tname = XDG User\n");
+
+    const xdgStore = new ConfigStore(new PathResolver(path.join(home, ".gitbridge"), home));
+    xdgStore.addIdentity({ id: "personal", name: "Fuad", email: "p@example.com" });
+    const xdgInjector = new GitConfigInjector(xdgStore);
+
+    expect(xdgInjector.inject().success).toBe(true);
+    expect(fs.existsSync(path.join(home, ".gitconfig"))).toBe(false);
+    const content = fs.readFileSync(xdgConfig, "utf-8");
+    expect(content).toContain("name = XDG User");
+    expect(content).toContain(GITCONFIG_BLOCK_START);
+    expect(xdgInjector.isInstalled()).toBe(true);
+
+    // Even if ~/.gitconfig appears later, status still sees the block and disable still removes it
+    fs.writeFileSync(path.join(home, ".gitconfig"), "[core]\n\teditor = vim\n");
+    expect(xdgInjector.isInstalled()).toBe(true);
+    expect(xdgInjector.remove()).toBe(true);
+    expect(xdgInjector.isInstalled()).toBe(false);
+    expect(fs.readFileSync(xdgConfig, "utf-8")).toContain("name = XDG User");
+    expect(fs.readFileSync(xdgConfig, "utf-8")).not.toContain(GITCONFIG_BLOCK_START);
+    expect(fs.readFileSync(path.join(home, ".gitconfig"), "utf-8")).toBe("[core]\n\teditor = vim\n");
+  });
+
   it("removes managed block cleanly on disable", () => {
     store.addIdentity({ id: "personal", name: "Fuad", email: "p@example.com" });
     injector.inject(testGitConfig);
