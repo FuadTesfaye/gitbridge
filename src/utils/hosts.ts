@@ -3,12 +3,21 @@
  * "github.com.attacker.tld".includes("github.com") is true.
  */
 
+/**
+ * Only the HTTPS default port is dropped. GitBridge never sends credentials
+ * over cleartext HTTP, and any other port names a different service on the
+ * same machine (git.corp:8443 is not git.corp), so it stays part of the host.
+ */
+const DEFAULT_PORT_SUFFIX = ":443";
+
 export function normalizeHost(host: string): string {
   if (!host || typeof host !== "string") return "";
   let h = host.trim().toLowerCase();
   h = h.replace(/^https?:\/\//, "");
   h = h.replace(/\/.*$/, "");
-  h = h.replace(/:\d+$/, "");
+  if (h.endsWith(DEFAULT_PORT_SUFFIX)) {
+    h = h.slice(0, -DEFAULT_PORT_SUFFIX.length);
+  }
   h = h.replace(/^\.+|\.+$/g, "");
   return h;
 }
