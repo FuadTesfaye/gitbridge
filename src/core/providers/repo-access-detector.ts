@@ -41,6 +41,14 @@ export interface DetectAccessOptions {
   explicitAccountId?: string;
   explicitEmail?: string;
   interactive?: boolean;
+  /**
+   * Allow the token API probe: GitBridge sends each candidate account's stored
+   * token to the provider API to ask which one can write to the repository.
+   * Off by default. `gb clone` enables it; identity resolution only does when
+   * settings.apiAccessProbe is set, so status, prompt and hook commands stay
+   * offline.
+   */
+  allowNetwork?: boolean;
 }
 
 export class RepoAccessDetector {
@@ -51,7 +59,14 @@ export class RepoAccessDetector {
   }
 
   async detectAccess(options: DetectAccessOptions): Promise<RepoAccessDetectionResult> {
-    const { url, targetPath = process.cwd(), explicitIdentityId, explicitAccountId, explicitEmail } = options;
+    const {
+      url,
+      targetPath = process.cwd(),
+      explicitIdentityId,
+      explicitAccountId,
+      explicitEmail,
+      allowNetwork = false,
+    } = options;
     const identities = this.store.loadIdentities();
     const accounts = this.store.loadAccounts();
     const cleanUrl = (url || "").trim();
@@ -210,13 +225,13 @@ export class RepoAccessDetector {
       };
     }
 
-    // Strategy B: Token API Probe
+    // Strategy B: Token API Probe (network, opt-in)
     // Check credentials in OS Keyring / Vault and probe API access
     try {
-      const credStore = await StoreFactory.getStore(this.store.getPathResolver());
+      const credStore = allowNetwork ? await StoreFactory.getStore(this.store.getPathResolver()) : null;
       const provider = defaultProviderRegistry.get(providerId);
 
-      if (provider && typeof provider.checkRepoAccess === "function") {
+      if (credStore && provider && typeof provider.checkRepoAccess === "function") {
         const writeMatches: ProviderAccount[] = [];
         let writePermission: string | undefined;
         for (const acc of providerAccounts) {

@@ -112,6 +112,8 @@ export async function handleCloneCommand(
     explicitIdentityId: options.identity || options.profile,
     explicitAccountId: options.account,
     explicitEmail: options.email,
+    // `gb clone` is an explicit network operation against this host; the token probe is documented for it.
+    allowNetwork: true,
   });
 
   if (accessResult.matched) {
