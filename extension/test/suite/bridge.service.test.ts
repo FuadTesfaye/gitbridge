@@ -5,6 +5,7 @@ import os from "node:os";
 import { ConfigStore } from "../../../src/core/config/config-store";
 import { PathResolver } from "../../../src/core/config/path-resolver";
 import { GitCli } from "../../../src/core/git/git-cli";
+import { defaultProviderRegistry } from "../../../src/core/providers/provider-registry";
 import { BridgeService } from "../../src/services/bridge.service";
 
 describe("Extension BridgeService", () => {
@@ -118,8 +119,17 @@ describe("Extension BridgeService", () => {
     expect(bridge.isGitInstalled()).toBe(false);
     expect(bridge.isSshInstalled()).toBe(false);
 
-    // 5. Diagnostics
-    const diag = await bridge.runDiagnostics();
+    // 5. Diagnostics (provider health checks mocked: no real network in the suite)
+    const originalHealthChecks = defaultProviderRegistry.list().map((p) => [p, p.checkHealth] as const);
+    for (const provider of defaultProviderRegistry.list()) {
+      provider.checkHealth = async () => ({ apiOk: true, pingMs: 1, message: "mocked" });
+    }
+    let diag: string;
+    try {
+      diag = await bridge.runDiagnostics();
+    } finally {
+      for (const [provider, original] of originalHealthChecks) provider.checkHealth = original;
+    }
     expect(diag).toBeDefined();
     expect(typeof diag).toBe("string");
     expect(diag).toContain("Git CLI Version");

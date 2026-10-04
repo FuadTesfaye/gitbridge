@@ -13,6 +13,11 @@ import {
   COMMAND_REGISTRY,
 } from "@/utils/similarity";
 
+/** picocolors colorizes when CI or FORCE_COLOR is set (and always on Windows); assert on plain text. */
+function stripAnsi(text: string): string {
+  return text.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
 describe("Similarity & Command Suggestion Engine", () => {
   describe("damerauLevenshtein", () => {
     it("returns 0 for identical strings", () => {
@@ -165,7 +170,7 @@ describe("Similarity & Command Suggestion Engine", () => {
 
   describe("formatCommandError & formatOptionError", () => {
     it("formats clean root error with suggested command and description", () => {
-      const output = formatCommandError("statsu", "gb");
+      const output = stripAnsi(formatCommandError("statsu", "gb"));
       expect(output).toContain("gb: 'statsu' is not a gb command. See 'gb --help'.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb status (or 'gb st')");
@@ -173,7 +178,7 @@ describe("Similarity & Command Suggestion Engine", () => {
     });
 
     it("formats clean subcommand error with parent context", () => {
-      const output = formatCommandError("lst", "gb", "id");
+      const output = stripAnsi(formatCommandError("lst", "gb", "id"));
       expect(output).toContain("gb: 'lst' is not a gb id command. See 'gb id --help'.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb id list (or 'gb id ls')");
@@ -181,7 +186,7 @@ describe("Similarity & Command Suggestion Engine", () => {
     });
 
     it("formats option suggestions for typos like --verison", () => {
-      const output = formatOptionError("--verison", "gb");
+      const output = stripAnsi(formatOptionError("--verison", "gb"));
       expect(output).toContain("gb: unknown option '--verison'. See 'gb --help'.");
       expect(output).toContain("The most similar option is:");
       expect(output).toContain("--version");
