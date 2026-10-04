@@ -84,8 +84,11 @@ describe("Keyring Stores Unit Tests", () => {
     expect(composite.name).toContain("Mock Failing Keychain (with Encrypted Vault fallback)");
     expect(await composite.isAvailable()).toBe(true);
 
-    // Should fall back to vault on set
-    await composite.set("service", "user", "secret_pass");
+    // Should fall back to vault on set, and say so
+    const written = await composite.set("service", "user", "secret_pass");
+    expect(written.usedFallback).toBe(true);
+    expect(written.backend).toContain("Encrypted Vault");
+    expect(written.fallbackReason).toContain("Keychain locked");
 
     // Should fall back to vault on get
     const retrieved = await composite.get("service", "user");
@@ -99,11 +102,14 @@ describe("Keyring Stores Unit Tests", () => {
     const workingPrimary = {
       name: "Mock Working Keychain",
       isAvailable: async () => true,
-      set: async () => {},
+      set: async () => ({ backend: "Mock Working Keychain", usedFallback: false }),
       get: async () => "primary_value",
       delete: async () => {},
     };
     const workingComposite = new CompositeCredentialStore(workingPrimary, vault);
     expect(await workingComposite.get("service", "user")).toBe("primary_value");
+    const direct = await workingComposite.set("service", "user", "value");
+    expect(direct.usedFallback).toBe(false);
+    expect(direct.backend).toBe("Mock Working Keychain");
   });
 });

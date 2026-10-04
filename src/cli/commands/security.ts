@@ -321,11 +321,16 @@ export async function handleSecurityFix(cwd: string = process.cwd(), store: Conf
         const host = matchHost ? matchHost[1] : "git-remote";
         const user = rv.username || "token";
         const account = ensureScrubbedAccount(store, host, user);
-        await credStore.set(account.host, account.id, rv.tokenOrPassword);
+        const written = await credStore.set(account.host, account.id, rv.tokenOrPassword);
 
         console.log(
-          `  ${pc.green("✔")} Scrubbed plaintext token from remote '${pc.cyan(rv.name)}' into secure Keyring (account '${pc.cyan(account.id)}').`
+          `  ${pc.green("✔")} Scrubbed plaintext token from remote '${pc.cyan(rv.name)}' into ${pc.cyan(written.backend)} (account '${pc.cyan(account.id)}').`
         );
+        if (written.usedFallback) {
+          console.log(
+            pc.yellow(`  ⚠ The OS keyring refused the token (${written.fallbackReason}); it is in the encrypted vault file instead.`)
+          );
+        }
       }
 
       if (!new GitConfigInjector(store).isInstalled()) {

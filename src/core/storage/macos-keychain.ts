@@ -1,4 +1,4 @@
-import type { CredentialStore } from "./credential-store";
+import type { CredentialStore, CredentialWriteResult } from "./credential-store";
 import { CredentialStoreError } from "@/utils/errors";
 import { execProcess } from "@/utils/proc";
 
@@ -24,7 +24,7 @@ export class MacOSKeychainCredentialStore implements CredentialStore {
     }
   }
 
-  async set(service: string, account: string, secret: string): Promise<void> {
+  async set(service: string, account: string, secret: string): Promise<CredentialWriteResult> {
     try {
       if (!isSafeKeychainToken(service) || !isSafeKeychainToken(account)) {
         throw new Error(`Keychain service/account must be plain tokens (got '${service}' / '${account}')`);
@@ -48,6 +48,7 @@ export class MacOSKeychainCredentialStore implements CredentialStore {
       if (stored !== secret) {
         throw new Error("Keychain did not store the secret (read-back mismatch)");
       }
+      return { backend: this.name, usedFallback: false };
     } catch (err: unknown) {
       throw new CredentialStoreError(
         `Failed to store credential in macOS Keychain: ${err instanceof Error ? err.message : String(err)}`

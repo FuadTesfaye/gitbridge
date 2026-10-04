@@ -630,8 +630,14 @@ export class CommandsController implements vscode.Disposable {
 
     try {
       this.notifications.showInfo(`Connecting ${provider.label}...`);
-      await this.bridge.loginWithToken(provider.value, token);
-      this.notifications.showInfo(`Authenticated with ${provider.label}.`);
+      const written = await this.bridge.loginWithToken(provider.value, token);
+      if (written.usedFallback) {
+        this.notifications.showWarning(
+          `Authenticated with ${provider.label}, but the OS keyring refused the token (${written.fallbackReason}). It is stored in GitBridge's encrypted vault file instead.`
+        );
+      } else {
+        this.notifications.showInfo(`Authenticated with ${provider.label}. Token stored in ${written.backend}.`);
+      }
       this.triggerRefresh();
     } catch (err: unknown) {
       this.notifications.showError(err instanceof Error ? err.message : String(err));

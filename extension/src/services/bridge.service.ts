@@ -12,6 +12,7 @@ import { defaultProviderRegistry } from "../../../src/core/providers/provider-re
 import { SshKeyDetector } from "../../../src/core/ssh/ssh-key-detector";
 import { IdentityGuard } from "../../../src/core/safety/identity-guard";
 import type { GitIdentity, ProviderAccount, DirectoryRule, RepositoryProfile } from "../../../src/core/config/schema";
+import type { CredentialWriteResult } from "../../../src/core/storage/credential-store";
 
 export class BridgeService {
   private store: ConfigStore;
@@ -118,7 +119,7 @@ export class BridgeService {
     return res;
   }
 
-  async loginWithToken(providerId: string, token: string, host?: string): Promise<void> {
+  async loginWithToken(providerId: string, token: string, host?: string): Promise<CredentialWriteResult> {
     const provider = defaultProviderRegistry.get(providerId);
     if (!provider) throw new Error(`Unknown provider '${providerId}'.`);
     const user = await provider.getUser(token, host);
@@ -135,8 +136,9 @@ export class BridgeService {
       authType: "pat",
     });
     const credStore = await StoreFactory.getStore(this.store.getPathResolver());
-    await credStore.set(cleanHost, accountId, token);
+    const written = await credStore.set(cleanHost, accountId, token);
     this.sshGen.generate();
+    return written;
   }
 
   async removeAccount(id: string): Promise<void> {

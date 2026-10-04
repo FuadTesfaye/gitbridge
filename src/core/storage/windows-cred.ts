@@ -1,4 +1,4 @@
-import type { CredentialStore } from "./credential-store";
+import type { CredentialStore, CredentialWriteResult } from "./credential-store";
 import { CredentialStoreError } from "@/utils/errors";
 import { execProcess } from "@/utils/proc";
 
@@ -100,7 +100,7 @@ switch ($req.action) {
     );
   }
 
-  async set(service: string, account: string, secret: string): Promise<void> {
+  async set(service: string, account: string, secret: string): Promise<CredentialWriteResult> {
     const target = this.targetName(service, account);
     const safeAccount = account.replace(/[^a-zA-Z0-9._-]/g, "");
     try {
@@ -108,6 +108,7 @@ switch ($req.action) {
       if (res.exitCode !== 0) {
         throw new Error(res.stderr || "CredWrite failed");
       }
+      return { backend: this.name, usedFallback: false };
     } catch (err: unknown) {
       throw new CredentialStoreError(
         `Failed to store credential in Windows Credential Manager: ${err instanceof Error ? err.message : String(err)}`
