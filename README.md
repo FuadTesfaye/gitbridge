@@ -79,7 +79,8 @@ GitBridge is designed from the ground up to be **non-intrusive, zero-telemetry, 
 
 ### 100% Offline-First & Zero Telemetry
 - **Zero External Tracking**: GitBridge **never** transmits configurations, repository paths, SSH keys, or credentials to any remote server or analytics service.
-- **Direct Provider Communication**: Network traffic occurs **only** when you explicitly authenticate (`gb auth login`), clone a repository, or check API connectivity (`gb doctor`), communicating directly with your configured Git providers (e.g. `api.github.com`, your GitLab instance).
+- **Direct Provider Communication**: Network traffic occurs **only** when you explicitly authenticate (`gb auth login`), clone a repository (`gb clone` may ask the provider API, with your stored tokens, which of your accounts can write to the repository), check API connectivity (`gb doctor`), or check for updates (`gb update`). It goes directly to your configured Git providers (e.g. `api.github.com`, your GitLab instance).
+- **Identity resolution stays offline**: `gb ctx`, `gb cur`, `gb explain`, the safety hooks and proxied `git` commands never call a provider API. If you want them to use the token probe too, set `"apiAccessProbe": true` under `settings` in `config.json`.
 
 ### Local Storage Architecture (`~/.gitbridge`)
 All GitBridge configuration is stored in your user profile under `~/.gitbridge` (configurable via `GITBRIDGE_HOME` or `XDG_CONFIG_HOME`):
@@ -91,7 +92,7 @@ All GitBridge configuration is stored in your user profile under `~/.gitbridge` 
 | `~/.gitbridge/accounts.json` | `0600` | Account metadata (Username, host, linked SSH key path — **no tokens stored here**) |
 | `~/.gitbridge/repos.json` | `0600` | Explicit local repository overrides and remembered bindings |
 | `~/.gitbridge/vault.enc` | `0600` | Authenticated fallback encrypted vault (**AES-256-GCM** + **PBKDF2**) |
-| `~/.gitbridge/generated/main.gitconfig` | `0600` | Compiled native Git config included via `~/.gitconfig` |
+| `~/.gitbridge/generated/main.gitconfig` | `0600` | Compiled native Git config included via `~/.gitconfig`, or via `$XDG_CONFIG_HOME/git/config` when that is where your git config lives and `~/.gitconfig` does not exist |
 | `~/.gitbridge/generated/ssh_config` | `0600` | Compiled SSH host aliases included via `~/.ssh/config` |
 | `~/.gitbridge/generated/rules/*.gitconfig` | `0600` | Per-directory compiled Git rules with `[user]` and `[url]` blocks |
 | `~/.gitbridge/backups/` | `0700` | Automated timestamped backups of `~/.gitconfig` and `~/.ssh/config` before any modification |
@@ -101,7 +102,8 @@ Personal access tokens and OAuth secrets are **never stored in plaintext** in Gi
 - **macOS**: Apple Keychain via `/usr/bin/security`
 - **Linux / BSD**: Secret Service API via `secret-tool` (secret on stdin)
 - **Windows**: Windows Credential Manager via `CredWrite`/`CredRead` (secret on stdin, not `cmdkey /pass`)
-- **Encrypted vault fallback**: If no system keyring is available, tokens go in `~/.gitbridge/vault.enc` using **AES-256-GCM** with **PBKDF2-HMAC-SHA-256** (100,000 iterations). The wrapping key is a machine fingerprint (hostname, user, home, machine-id) — it prevents casual copying to another machine, not a same-user attacker.
+- **Encrypted vault fallback**: If no system keyring is available, tokens go in `~/.gitbridge/vault.enc` using **AES-256-GCM** with **PBKDF2-HMAC-SHA-256** (100,000 iterations). The wrapping key is a machine fingerprint (hostname, user, home, machine-id) — it prevents casual copying to another machine, not a same-user attacker. `gb auth login` tells you which backend actually stored the token and warns when the vault had to be used.
+- **Secrets stay off the command line**: tokens reach `secret-tool`, the macOS `security` tool and Windows `CredWrite` over stdin, and `gb ssh generate` lets `ssh-keygen` prompt for the passphrase itself, so nothing sensitive is visible to other users via `ps`.
 
 ### Strict Defensive Hardening
 - **POSIX Permission Lockdown**: `~/.gitbridge` directories are `0700`, sensitive files are written atomically with mode `0600`.
@@ -542,6 +544,11 @@ bun run build
 bun run bin/gb.ts --help
 bun run bin/gb.ts st
 ```
+
+### Continuous Integration & Releases
+
+- `.github/workflows/ci.yml` typechecks, tests and builds every push and pull request.
+- `.github/workflows/release.yml` publishes to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements) when a `v*` tag is pushed, after checking that the tag matches `package.json`. Once a release has been published this way you can verify that the package on npm was built from this repository with `npm audit signatures`.
 
 ---
 
