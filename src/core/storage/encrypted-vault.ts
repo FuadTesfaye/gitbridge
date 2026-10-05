@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import type { CredentialStore } from "./credential-store";
+import type { CredentialStore, CredentialWriteResult } from "./credential-store";
 import { CredentialStoreError } from "@/utils/errors";
 import type { PathResolver } from "../config/path-resolver";
 import { getMachineHardwareId } from "@/utils/security";
@@ -131,10 +131,11 @@ export class EncryptedVaultCredentialStore implements CredentialStore {
     return `${service}:::${account}`;
   }
 
-  async set(service: string, account: string, secret: string): Promise<void> {
+  async set(service: string, account: string, secret: string): Promise<CredentialWriteResult> {
     const vault = this.readVault();
     vault[this.makeKey(service, account)] = secret;
     this.writeVault(vault);
+    return { backend: this.name, usedFallback: false };
   }
 
   async get(service: string, account: string): Promise<string | null> {

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { PathResolver } from "@/core/config/path-resolver";
 
@@ -30,6 +32,32 @@ describe("PathResolver", () => {
     const paths = new PathResolver(base, home);
     expect(paths.getBaseDir()).toBe(base);
     expect(paths.getUserGitConfigFile()).toBe(path.join(home, ".gitconfig"));
+  });
+
+  it("targets the XDG git config when ~/.gitconfig is absent, like git itself", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "gb-path-resolver-home-"));
+    try {
+      const paths = new PathResolver(undefined, home);
+      const legacy = path.join(home, ".gitconfig");
+      const xdg = path.join(home, ".config", "git", "config");
+
+      // Nothing exists yet: git would create ~/.gitconfig, so do we
+      expect(paths.getUserGitConfigFile()).toBe(legacy);
+      expect(paths.getUserGitConfigCandidates()).toEqual([]);
+
+      // Only the XDG file exists: write there instead of creating a stray ~/.gitconfig
+      fs.mkdirSync(path.dirname(xdg), { recursive: true });
+      fs.writeFileSync(xdg, "[user]\n\tname = XDG User\n");
+      expect(paths.getUserGitConfigFile()).toBe(xdg);
+      expect(paths.getUserGitConfigCandidates()).toEqual([xdg]);
+
+      // Both exist: ~/.gitconfig wins, matching `git config --global`
+      fs.writeFileSync(legacy, "");
+      expect(paths.getUserGitConfigFile()).toBe(legacy);
+      expect(paths.getUserGitConfigCandidates()).toEqual([legacy, xdg]);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
   });
 
   it("follows the environment when no home directory is given", () => {

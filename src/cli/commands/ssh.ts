@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import child_process from "node:child_process";
 import Table from "cli-table3";
 import pc from "picocolors";
 import { SshKeyDetector } from "@/core/ssh/ssh-key-detector";
@@ -9,7 +10,6 @@ import { promptSelect, promptText, promptConfirm } from "../ui/prompts";
 import { execProcess } from "@/utils/proc";
 import { logger } from "@/utils/logger";
 import { isSafeSshKeyBasename, isSafeSshIdentityFile, sanitizeSshKeyPath } from "@/utils/security";
-import { promptPassword } from "../ui/prompts";
 
 export async function handleSshList(store: ConfigStore = defaultConfigStore) {
   const keys = SshKeyDetector.listAvailableKeys(store.getPathResolver().getUserSshDir());
@@ -91,12 +91,16 @@ export async function handleSshGenerate(
         : "",
     }));
 
-  let passphrase = "";
+  // The passphrase is never read by GitBridge or passed on the command line
+  // (argv is visible to every user via `ps`). With a terminal, ssh-keygen asks
+  // for it itself; without one, the key is created without a passphrase.
+  let interactivePassphrase = false;
   if (process.stdin.isTTY) {
-    passphrase = await promptPassword({
-      message: "Enter passphrase for the new key (empty for none — not recommended):",
+    interactivePassphrase = await promptConfirm({
+      message: "Protect the key with a passphrase? ssh-keygen will prompt for it.",
+      initialValue: true,
     });
-    if (!passphrase) {
+    if (!interactivePassphrase) {
       const ok = await promptConfirm({
         message: "Create a passphrase-less key? Anyone with the file can use it.",
         initialValue: false,
@@ -109,10 +113,21 @@ export async function handleSshGenerate(
   }
 
   console.log(pc.cyan(`\nGenerating ed25519 SSH key at ${targetPath}...`));
-  const res = await execProcess("ssh-keygen", ["-t", "ed25519", "-C", comment, "-f", targetPath, "-N", passphrase]);
+  const baseArgs = ["-t", "ed25519", "-C", comment, "-f", targetPath];
+  let exitCode: number;
+  let failureOutput = "";
+  if (interactivePassphrase) {
+    const res = child_process.spawnSync("ssh-keygen", baseArgs, { stdio: "inherit" });
+    exitCode = res.status ?? 1;
+    if (res.error) failureOutput = res.error.message;
+  } else {
+    const res = await execProcess("ssh-keygen", [...baseArgs, "-N", ""], { allowFailure: true });
+    exitCode = res.exitCode;
+    failureOutput = res.stderr || res.stdout;
+  }
 
-  if (res.exitCode !== 0) {
-    logger.error(`ssh-keygen failed: ${res.stderr || res.stdout}`);
+  if (exitCode !== 0) {
+    logger.error(`ssh-keygen failed${failureOutput ? `: ${failureOutput}` : ""}`);
     return;
   }
 

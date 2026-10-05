@@ -166,6 +166,7 @@ describe("Public-repo access is not ownership", () => {
         const result = await detector.detectAccess({
           url: "https://github.com/torvalds/linux.git",
           targetPath: tempDir,
+          allowNetwork: true,
         });
         expect(result.matched).toBe(false);
       } finally {

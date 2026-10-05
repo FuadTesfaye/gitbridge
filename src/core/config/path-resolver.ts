@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { getHomeDir, expandTilde } from "@/utils/platform";
 
@@ -115,8 +116,29 @@ export class PathResolver {
     return path.join(this.baseDir, "override.active");
   }
 
+  /**
+   * The user-level git config file `gb enable` writes its include block to.
+   * Mirrors git's own precedence so XDG users do not get a stray ~/.gitconfig
+   * that would also redirect their `git config --global` writes:
+   * ~/.gitconfig when it exists, otherwise $XDG_CONFIG_HOME/git/config when
+   * that exists, otherwise ~/.gitconfig.
+   */
   getUserGitConfigFile(): string {
-    return path.join(this.getHomeDir(), ".gitconfig");
+    const legacy = path.join(this.getHomeDir(), ".gitconfig");
+    if (fs.existsSync(legacy)) return legacy;
+    const xdg = path.join(this.getUserConfigDir(), "git", "config");
+    if (fs.existsSync(xdg)) return xdg;
+    return legacy;
+  }
+
+  /**
+   * Every user-level git config file that exists. Git reads both, so a block
+   * installed in either must be found by status and removed by disable.
+   */
+  getUserGitConfigCandidates(): string[] {
+    const legacy = path.join(this.getHomeDir(), ".gitconfig");
+    const xdg = path.join(this.getUserConfigDir(), "git", "config");
+    return [legacy, xdg].filter((file) => fs.existsSync(file));
   }
 
   getUserSshConfigFile(): string {

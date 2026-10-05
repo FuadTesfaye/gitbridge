@@ -171,13 +171,20 @@ export async function handleAuthLogin(
 
     // Save token in secure store
     const credStore = await StoreFactory.getStore(store.getPathResolver());
-    await credStore.set(cleanHost, accountId, token);
+    const written = await credStore.set(cleanHost, accountId, token);
 
     // Update SSH config
     const sshGen = new SshConfigGenerator(store);
     sshGen.generate();
 
-    logger.success(`Account '${accountId}' registered and token secured in OS Keychain/Keyring!`);
+    if (written.usedFallback) {
+      logger.warn(`Account '${accountId}' registered, but the OS keyring refused the token: ${written.fallbackReason}`);
+      logger.warn(
+        `The token is stored in the encrypted vault at ${store.getPathResolver().getEncryptedVaultFile()} instead. Any process running as your user can decrypt that file.`
+      );
+    } else {
+      logger.success(`Account '${accountId}' registered and token stored in ${written.backend}.`);
+    }
     console.log(pc.gray(`  Host:      ${cleanHost}`));
     console.log(pc.gray(`  Username:  ${username}`));
     if (sshKeyPath) {

@@ -69,6 +69,9 @@ export class GitCredentialHelperHandler {
 
     if (!targetAccount && payload.username) {
       targetAccount = hostAccounts.find((a) => a.username === payload.username) || null;
+      // Git asked for a specific user we do not have. Never substitute another
+      // account's token: git will prompt and then call `store`, which saves it.
+      if (!targetAccount) return "";
     }
 
     // Do not guess among multiple accounts for the same host.

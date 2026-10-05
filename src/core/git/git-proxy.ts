@@ -184,7 +184,8 @@ export class GitProxy {
               const dest = nonOptions[1];
               const targetPath = dest ? path.resolve(cwd, dest) : cwd;
               const detector = new RepoAccessDetector(this.store);
-              const accessRes = await detector.detectAccess({ url: cloneUrl, targetPath });
+              // A clone already talks to this host, so the token probe is allowed here.
+              const accessRes = await detector.detectAccess({ url: cloneUrl, targetPath, allowNetwork: true });
               if (accessRes.matched && accessRes.sshKeyPath && fs.existsSync(accessRes.sshKeyPath) && isSafeSshIdentityFile(accessRes.sshKeyPath)) {
                 const safeKey = sanitizeSshKeyPath(accessRes.sshKeyPath);
                 injectedEnv.GIT_SSH_COMMAND = `ssh -i "${safeKey}" -o IdentitiesOnly=yes`;
@@ -264,7 +265,7 @@ export class GitProxy {
 
           if (!targetIdentity && cloneUrl) {
             const detector = new RepoAccessDetector(this.store);
-            const accessRes = await detector.detectAccess({ url: cloneUrl, targetPath: root });
+            const accessRes = await detector.detectAccess({ url: cloneUrl, targetPath: root, allowNetwork: true });
             if (accessRes.matched) {
               targetIdentity = accessRes.identity || null;
               targetAccountId = accessRes.accountId;

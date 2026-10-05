@@ -154,7 +154,12 @@ export class IdentityResolver {
       const remoteUrl = firstRemote.pushUrl || firstRemote.fetchUrl;
       if (remoteUrl) {
         const accessDetector = new RepoAccessDetector(this.store);
-        const accessRes = await accessDetector.detectAccess({ url: remoteUrl, targetPath });
+        const accessRes = await accessDetector.detectAccess({
+          url: remoteUrl,
+          targetPath,
+          // Network only when the user opted in; resolution runs from prompts and hooks.
+          allowNetwork: config.settings.apiAccessProbe,
+        });
         if (accessRes.matched && accessRes.identity) {
           resolvedIdentity = accessRes.identity;
           source = "remote_access";

@@ -153,6 +153,7 @@ describe("RepoAccessDetector Unit Tests", () => {
       const result = await detector.detectAccess({
         url: "https://github.com/company/secret-repo.git",
         targetPath: tempDir,
+        allowNetwork: true,
       });
 
       expect(result.matched).toBe(true);
@@ -164,6 +165,39 @@ describe("RepoAccessDetector Unit Tests", () => {
       if (github && originalCheck) {
         github.checkRepoAccess = originalCheck;
       }
+    }
+  });
+
+  it("never calls the provider API unless allowNetwork is set", async () => {
+    store.addIdentity({ id: "id_alice", name: "Alice", email: "alice@org.com" });
+    store.addAccount({ id: "github_alice", providerId: "github", host: "github.com", username: "alice", identityId: "id_alice", authType: "pat" });
+    store.addAccount({ id: "github_bob", providerId: "github", host: "github.com", username: "bob", authType: "pat" });
+    const credStore = await StoreFactory.getStore(paths);
+    await credStore.set("github.com", "github_alice", "token_alice");
+    await credStore.set("github.com", "github_bob", "token_bob");
+
+    const github = defaultProviderRegistry.get("github");
+    const originalCheck = github?.checkRepoAccess;
+    let calls = 0;
+    try {
+      if (github) {
+        github.checkRepoAccess = async () => {
+          calls++;
+          return { hasAccess: true, permission: "write" };
+        };
+      }
+
+      const result = await detector.detectAccess({
+        url: "https://github.com/company/secret-repo.git",
+        targetPath: tempDir,
+      });
+
+      expect(calls).toBe(0);
+      expect(result.tier).not.toBe("token_api");
+      expect(result.matched).toBe(false);
+      expect(result.tier).toBe("prompt_fallback");
+    } finally {
+      if (github && originalCheck) github.checkRepoAccess = originalCheck;
     }
   });
 

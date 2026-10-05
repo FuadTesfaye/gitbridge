@@ -109,9 +109,8 @@ export class ProviderDetector {
       ["bitbucket", { name: "Bitbucket", host: "bitbucket.org", sources: new Set() }],
     ]);
 
-    // 1. Inspect ~/.gitconfig
-    const gitConfigFile = path.join(home, ".gitconfig");
-    if (fs.existsSync(gitConfigFile)) {
+    // 1. Inspect the user git config files git actually reads (~/.gitconfig and the XDG one)
+    for (const gitConfigFile of paths.getUserGitConfigCandidates()) {
       try {
         const content = fs.readFileSync(gitConfigFile, "utf-8");
         if (textContainsHost(content, "github.com")) {
@@ -129,7 +128,7 @@ export class ProviderDetector {
     }
 
     // 2. Inspect ~/.ssh/config
-    const sshConfigFile = path.join(home, ".ssh", "config");
+    const sshConfigFile = paths.getUserSshConfigFile();
     if (fs.existsSync(sshConfigFile)) {
       try {
         const content = fs.readFileSync(sshConfigFile, "utf-8");

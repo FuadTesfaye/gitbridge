@@ -8,6 +8,11 @@ const GITBRIDGE_BIN = path.resolve(__dirname, "../../bin/gitbridge.ts");
 
 const runCmd = (cmd: string, args: string[]) => execProcess(cmd, args, { allowFailure: true });
 
+/** picocolors colorizes when CI or FORCE_COLOR is set (and always on Windows); assert on plain text. */
+function stripAnsi(text: string): string {
+  return text.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
 describe("Enhanced CLI Help & Suggestions Integration", () => {
   describe("formatRootHelp", () => {
     it("includes all 25 user-facing commands across 5 categories", () => {
@@ -131,7 +136,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests 'status' when user types 'statsu'", async () => {
       const res = await runCmd("bun", [GB_BIN, "statsu"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: 'statsu' is not a gb command.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb status (or 'gb st')");
@@ -140,7 +145,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests 'identity' (not 'ide') when user types 'ident'", async () => {
       const res = await runCmd("bun", [GB_BIN, "ident"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: 'ident' is not a gb command.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb identity (or 'gb id')");
@@ -149,7 +154,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests 'auth login' when user types 'login' directly at root", async () => {
       const res = await runCmd("bun", [GB_BIN, "login"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: 'login' is not a gb command.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb auth login");
@@ -158,7 +163,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests 'security check' when user types 'check' directly at root", async () => {
       const res = await runCmd("bun", [GB_BIN, "check"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: 'check' is not a gb command.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb security check");
@@ -167,7 +172,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests 'ide sync' when user types 'sync' directly at root", async () => {
       const res = await runCmd("bun", [GB_BIN, "sync"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: 'sync' is not a gb command.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb ide sync");
@@ -176,7 +181,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests 'list' when user types 'gb id lst'", async () => {
       const res = await runCmd("bun", [GB_BIN, "id", "lst"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: 'lst' is not a gb id command.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb id list (or 'gb id ls')");
@@ -185,7 +190,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests 'set' when user types 'gb repo sett'", async () => {
       const res = await runCmd("bun", [GB_BIN, "repo", "sett"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: 'sett' is not a gb repo command.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb repo set");
@@ -194,7 +199,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests 'security check' when user types 'gb security chek'", async () => {
       const res = await runCmd("bun", [GB_BIN, "security", "chek"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: 'chek' is not a gb security command.");
       expect(output).toContain("The most similar command is:");
       expect(output).toContain("gb security check");
@@ -203,7 +208,7 @@ describe("Enhanced CLI Help & Suggestions Integration", () => {
     it("suggests '--version' when user types option typo '--verison'", async () => {
       const res = await runCmd("bun", [GB_BIN, "--verison"]);
       expect(res.exitCode).toBe(1);
-      const output = res.stdout + res.stderr;
+      const output = stripAnsi(res.stdout + res.stderr);
       expect(output).toContain("gb: unknown option '--verison'.");
       expect(output).toContain("The most similar option is:");
       expect(output).toContain("--version");

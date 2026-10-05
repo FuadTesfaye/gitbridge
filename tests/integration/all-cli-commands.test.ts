@@ -7,6 +7,7 @@ import { PathResolver } from "@/core/config/path-resolver";
 import { GitCli } from "@/core/git/git-cli";
 import { execProcess } from "@/utils/proc";
 import { GITBRIDGE_VERSION } from "@/version";
+import { defaultProviderRegistry } from "@/core/providers/provider-registry";
 
 // Commands
 import { handleSetupCommand } from "@/cli/commands/setup";
@@ -126,8 +127,17 @@ describe("🌟 Complete End-to-End Test for All GitBridge Commands", () => {
     await handleSetupCommand({ quick: true }, store);
     expect(store.loadIdentities().length).toBeGreaterThanOrEqual(1);
 
-    // Doctor
-    await handleDoctorCommand(store);
+    // Doctor. Provider health checks are mocked so the suite never depends on
+    // real network access (or on how fast api.github.com answers in CI).
+    const originalHealthChecks = defaultProviderRegistry.list().map((p) => [p, p.checkHealth] as const);
+    for (const provider of defaultProviderRegistry.list()) {
+      provider.checkHealth = async () => ({ apiOk: true, pingMs: 1, message: "mocked" });
+    }
+    try {
+      await handleDoctorCommand(store);
+    } finally {
+      for (const [provider, original] of originalHealthChecks) provider.checkHealth = original;
+    }
 
     // Status
     await handleStatusCommand(store);

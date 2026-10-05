@@ -1,4 +1,4 @@
-import type { CredentialStore } from "./credential-store";
+import type { CredentialStore, CredentialWriteResult } from "./credential-store";
 import { LinuxKeyringCredentialStore } from "./linux-keyring";
 import { MacOSKeychainCredentialStore } from "./macos-keychain";
 import { WindowsCredentialStore } from "./windows-cred";
@@ -20,11 +20,18 @@ export class CompositeCredentialStore implements CredentialStore {
     return true;
   }
 
-  async set(service: string, account: string, secret: string): Promise<void> {
+  /**
+   * Tries the OS keyring first and falls back to the encrypted vault file. The
+   * result says which one holds the secret, so callers can tell the user
+   * instead of claiming it went to the keyring.
+   */
+  async set(service: string, account: string, secret: string): Promise<CredentialWriteResult> {
     try {
-      await this.primary.set(service, account, secret);
-    } catch {
-      await this.fallback.set(service, account, secret);
+      return await this.primary.set(service, account, secret);
+    } catch (err: unknown) {
+      const reason = err instanceof Error ? err.message : String(err);
+      const result = await this.fallback.set(service, account, secret);
+      return { backend: result.backend, usedFallback: true, fallbackReason: reason };
     }
   }
 

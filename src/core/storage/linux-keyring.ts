@@ -1,4 +1,4 @@
-import type { CredentialStore } from "./credential-store";
+import type { CredentialStore, CredentialWriteResult } from "./credential-store";
 import { CredentialStoreError } from "@/utils/errors";
 import { execProcess } from "@/utils/proc";
 
@@ -14,13 +14,14 @@ export class LinuxKeyringCredentialStore implements CredentialStore {
     }
   }
 
-  async set(service: string, account: string, secret: string): Promise<void> {
+  async set(service: string, account: string, secret: string): Promise<CredentialWriteResult> {
     try {
       await execProcess(
         "secret-tool",
         ["store", "--label", `GitBridge (${service}:${account})`, "service", service, "account", account],
         { stdin: secret }
       );
+      return { backend: this.name, usedFallback: false };
     } catch (err: unknown) {
       throw new CredentialStoreError(
         `Failed to store credential in Linux Keyring: ${err instanceof Error ? err.message : String(err)}`

@@ -14,11 +14,20 @@ export class GitConfigInjector {
     this.store = store;
   }
 
-  isInstalled(targetFile?: string): boolean {
-    const gitConfigFile = targetFile || this.store.getPathResolver().getUserGitConfigFile();
-    if (!fs.existsSync(gitConfigFile)) return false;
-    const content = fs.readFileSync(gitConfigFile, "utf-8");
+  /** Files to inspect: the explicit target, or every user git config git would read. */
+  private candidateFiles(targetFile?: string): string[] {
+    if (targetFile) return [targetFile];
+    return this.store.getPathResolver().getUserGitConfigCandidates();
+  }
+
+  private hasBlock(file: string): boolean {
+    if (!fs.existsSync(file)) return false;
+    const content = fs.readFileSync(file, "utf-8");
     return content.includes(GITCONFIG_BLOCK_START) && content.includes(GITCONFIG_BLOCK_END);
+  }
+
+  isInstalled(targetFile?: string): boolean {
+    return this.candidateFiles(targetFile).some((file) => this.hasBlock(file));
   }
 
   private createBackup(gitConfigFile: string): string | null {
@@ -46,7 +55,13 @@ export class GitConfigInjector {
     const generator = new GitConfigGenerator(this.store);
     const { mainConfigPath } = generator.generate();
 
-    const gitConfigFile = targetFile || this.store.getPathResolver().getUserGitConfigFile();
+    // Update the block where it already lives; otherwise follow git's own file precedence.
+    const existingTarget = this.candidateFiles(targetFile).find((file) => this.hasBlock(file));
+    const gitConfigFile = targetFile || existingTarget || this.store.getPathResolver().getUserGitConfigFile();
+    const gitConfigDir = path.dirname(gitConfigFile);
+    if (!fs.existsSync(gitConfigDir)) {
+      fs.mkdirSync(gitConfigDir, { recursive: true });
+    }
     const backupPath = this.createBackup(gitConfigFile);
 
     let originalContent = "";
@@ -79,18 +94,20 @@ export class GitConfigInjector {
   }
 
   remove(targetFile?: string): boolean {
-    const gitConfigFile = targetFile || this.store.getPathResolver().getUserGitConfigFile();
-    if (!fs.existsSync(gitConfigFile)) return true;
+    let ok = true;
+    for (const gitConfigFile of this.candidateFiles(targetFile)) {
+      if (!fs.existsSync(gitConfigFile)) continue;
 
-    const originalContent = fs.readFileSync(gitConfigFile, "utf-8");
-    if (!originalContent.includes(GITCONFIG_BLOCK_START)) return true;
+      const originalContent = fs.readFileSync(gitConfigFile, "utf-8");
+      if (!originalContent.includes(GITCONFIG_BLOCK_START)) continue;
 
-    const removed = removeManagedBlock(originalContent, GITCONFIG_BLOCK_START, GITCONFIG_BLOCK_END);
-    if (!removed.ok || removed.content === undefined) {
-      return false;
+      const removed = removeManagedBlock(originalContent, GITCONFIG_BLOCK_START, GITCONFIG_BLOCK_END);
+      if (!removed.ok || removed.content === undefined) {
+        ok = false;
+        continue;
+      }
+      fs.writeFileSync(gitConfigFile, removed.content, { encoding: "utf-8", mode: 0o644 });
     }
-    fs.writeFileSync(gitConfigFile, removed.content, { encoding: "utf-8", mode: 0o644 });
-
-    return true;
+    return ok;
   }
 }

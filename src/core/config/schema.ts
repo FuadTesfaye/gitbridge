@@ -78,6 +78,13 @@ export const GitBridgeSettingsSchema = z.object({
   fallbackEncryptedStore: z.boolean().default(false),
   overrideEnabled: z.boolean().default(false),
   realGitPath: z.string().nullish().transform((v) => v ?? undefined),
+  /**
+   * Let identity resolution (gb ctx, gb cur, hooks, proxied commits) query the
+   * provider API with stored tokens to find which account can write to the
+   * repository. Off by default so those commands never touch the network;
+   * `gb clone` always probes because the user is already talking to the host.
+   */
+  apiAccessProbe: z.boolean().default(false),
 });
 export type GitBridgeSettings = z.infer<typeof GitBridgeSettingsSchema>;
 
