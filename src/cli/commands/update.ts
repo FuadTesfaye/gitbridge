@@ -2,6 +2,17 @@ import pc from "picocolors";
 import { GITBRIDGE_VERSION } from "@/version";
 import { logger } from "@/utils/logger";
 import { execProcess } from "@/utils/proc";
+import { isHttpsUrl } from "@/utils/hosts";
+
+const PACKAGE_NAME = "@fuad24/gitbridge";
+const DEFAULT_REGISTRY = "https://registry.npmjs.org";
+
+/** Strict semver (optional pre-release/build). The only shape ever passed to `npm install`. */
+const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+export function isValidVersion(value: unknown): value is string {
+  return typeof value === "string" && SEMVER_RE.test(value);
+}
 
 export function compareVersions(v1: string, v2: string): number {
   const parse = (v: string) => v.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
@@ -16,16 +27,23 @@ export function compareVersions(v1: string, v2: string): number {
   return 0;
 }
 
+/**
+ * Asks the registry for the latest version. Returns null when the registry is
+ * not HTTPS, the package is unknown, or the response is not a plain semver
+ * string: whatever comes back is later interpolated into an `npm install`
+ * argument, so it is never trusted blindly.
+ */
 export async function fetchLatestVersion(
-  packageName: string = "@fuad24/gitbridge",
-  registryUrl: string = "https://registry.npmjs.org"
+  packageName: string = PACKAGE_NAME,
+  registryUrl: string = DEFAULT_REGISTRY
 ): Promise<string | null> {
+  if (!isHttpsUrl(registryUrl)) return null;
   try {
     const url = `${registryUrl.replace(/\/$/, "")}/${packageName}/latest`;
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return null;
-    const data = (await res.json()) as { version?: string };
-    return data.version || null;
+    const data = (await res.json()) as { version?: unknown };
+    return isValidVersion(data.version) ? data.version : null;
   } catch {
     return null;
   }
@@ -38,16 +56,22 @@ export interface UpdateOptions {
 }
 
 export async function handleUpdateCommand(opts: UpdateOptions = {}): Promise<void> {
-  const packageName = "@fuad24/gitbridge";
-  const registry = opts.registry || "https://registry.npmjs.org";
+  const packageName = PACKAGE_NAME;
+  const registry = opts.registry || DEFAULT_REGISTRY;
 
   console.log(pc.bold(pc.cyan("\n  GitBridge Update Checker\n")));
-  logger.info(`Checking for updates on npm registry...`);
+
+  if (!isHttpsUrl(registry)) {
+    logger.error(`Refusing to use a non-HTTPS registry: ${registry}`);
+    return;
+  }
+
+  logger.info(`Checking for updates on ${registry}...`);
 
   const latestVersion = await fetchLatestVersion(packageName, registry);
 
   if (!latestVersion) {
-    logger.warn(`Could not reach npm registry to check for updates.`);
+    logger.warn(`Could not get a valid latest version from ${registry}.`);
     logger.info(`You can manually update with: npm install -g ${packageName}@latest\n`);
     return;
   }
@@ -76,11 +100,19 @@ export async function handleUpdateCommand(opts: UpdateOptions = {}): Promise<voi
     return;
   }
 
+  // Defensive: fetchLatestVersion already validated this, keep the guard next to the spawn.
+  if (!isValidVersion(latestVersion)) {
+    logger.error(`Refusing to install an invalid version string: ${latestVersion}`);
+    return;
+  }
+
   logger.info(`Installing update via npm...`);
 
-  const res = await execProcess("npm", ["install", "-g", `${packageName}@${latestVersion}`], {
-    allowFailure: true,
-  });
+  const installArgs = ["install", "-g", `${packageName}@${latestVersion}`];
+  if (opts.registry) {
+    installArgs.push("--registry", registry);
+  }
+  const res = await execProcess("npm", installArgs, { allowFailure: true });
 
   if (res.exitCode === 0) {
     logger.success(`Successfully updated GitBridge to v${latestVersion}!\n`);
