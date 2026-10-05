@@ -10,6 +10,7 @@ import { isHttpUrl } from "@/utils/hosts";
 import { isSafeSshIdentityFile, sanitizeSshKeyPath } from "@/utils/security";
 import { logger } from "@/utils/logger";
 import type { GitProviderType } from "@/core/config/schema";
+import { buildAccountId } from "@/core/config/account-id";
 
 export interface AuthLoginOptions {
   token?: string;
@@ -152,7 +153,7 @@ export async function handleAuthLogin(
     }
 
     const cleanHost = host.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-    const accountId = `${targetProvider}_${username.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    const accountId = buildAccountId(targetProvider, username, cleanHost, provider.defaultHost, store.loadAccounts());
 
     // Enable provider if not already enabled
     defaultProviderRegistry.enableProvider(targetProvider, store);
