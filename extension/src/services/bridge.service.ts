@@ -13,6 +13,7 @@ import { SshKeyDetector } from "../../../src/core/ssh/ssh-key-detector";
 import { IdentityGuard } from "../../../src/core/safety/identity-guard";
 import type { GitIdentity, ProviderAccount, DirectoryRule, RepositoryProfile } from "../../../src/core/config/schema";
 import type { CredentialWriteResult } from "../../../src/core/storage/credential-store";
+import { buildAccountId } from "../../../src/core/config/account-id";
 
 export class BridgeService {
   private store: ConfigStore;
@@ -124,7 +125,7 @@ export class BridgeService {
     if (!provider) throw new Error(`Unknown provider '${providerId}'.`);
     const user = await provider.getUser(token, host);
     const cleanHost = (host || provider.defaultHost).replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-    const accountId = `${provider.id}_${user.username.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    const accountId = buildAccountId(provider.id, user.username, cleanHost, provider.defaultHost, this.store.loadAccounts());
     defaultProviderRegistry.enableProvider(provider.id, this.store);
     this.store.addAccount({
       id: accountId,

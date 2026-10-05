@@ -2,7 +2,33 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { ConfigStore, defaultConfigStore } from "../config/config-store";
-import { parseJsonc } from "@/utils/jsonc";
+import { parse as parseJsoncText, modify, applyEdits, type ParseError, type FormattingOptions } from "jsonc-parser";
+
+/** New properties are inserted with this formatting; existing text is left exactly as it was. */
+const SETTINGS_FORMAT: FormattingOptions = { tabSize: 2, insertSpaces: true, eol: "\n" };
+
+/**
+ * Reads editor settings (JSON with comments and trailing commas). Returns null
+ * when the file is not valid, so callers never overwrite a file they could not
+ * understand.
+ */
+function readSettings(text: string): Record<string, unknown> | null {
+  const errors: ParseError[] = [];
+  const parsed: unknown = parseJsoncText(text, errors, { allowTrailingComma: true });
+  if (errors.length > 0 || !parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null;
+  }
+  return parsed as Record<string, unknown>;
+}
+
+/**
+ * Sets a value at `segments` (or removes it when `value` is undefined) with a
+ * minimal text edit, so the user's comments, key order and indentation are
+ * preserved instead of being flattened by JSON.stringify.
+ */
+function editSetting(text: string, segments: (string | number)[], value: unknown): string {
+  return applyEdits(text, modify(text, segments, value, { formattingOptions: SETTINGS_FORMAT }));
+}
 
 export interface IdeTarget {
   name: string;
@@ -95,21 +121,21 @@ export class IdeSyncManager {
 
     this.createBackup(settingsFile);
 
-    let settings: Record<string, any> = {};
-    if (fs.existsSync(settingsFile)) {
-      const content = fs.readFileSync(settingsFile, "utf-8").trim();
-      if (content) {
-        const parsed = parseJsonc(content);
-        if (!parsed) {
-          return { success: false, modified: false };
-        }
-        settings = parsed;
+    let text = fs.existsSync(settingsFile) ? fs.readFileSync(settingsFile, "utf-8") : "";
+    let settings: Record<string, unknown> = {};
+    if (text.trim()) {
+      const parsed = readSettings(text);
+      if (!parsed) {
+        return { success: false, modified: false };
       }
+      settings = parsed;
+    } else {
+      text = "{}\n";
     }
 
     // 1. Set git.path
-    settings["git.path"] = gitShim;
-    settings["gitbridge.managed"] = true;
+    text = editSetting(text, ["git.path"], gitShim);
+    text = editSetting(text, ["gitbridge.managed"], true);
 
     // 2. Set terminal environment to prepend shims
     const platform = process.platform;
@@ -120,15 +146,14 @@ export class IdeSyncManager {
       : "terminal.integrated.env.linux";
 
     const pathSep = platform === "win32" ? ";" : ":";
-    const currentEnv = settings[envKey] || {};
-    const existingPath = currentEnv["PATH"] || "${env:PATH}";
+    const currentEnv = (settings[envKey] as Record<string, unknown> | undefined) ?? {};
+    const existingPath = typeof currentEnv["PATH"] === "string" ? currentEnv["PATH"] : "${env:PATH}";
 
     if (!existingPath.includes(shimsDir)) {
-      currentEnv["PATH"] = `${shimsDir}${pathSep}${existingPath}`;
-      settings[envKey] = currentEnv;
+      text = editSetting(text, [envKey, "PATH"], `${shimsDir}${pathSep}${existingPath}`);
     }
 
-    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), { encoding: "utf-8" });
+    fs.writeFileSync(settingsFile, text, { encoding: "utf-8" });
     return { success: true, modified: true };
   }
 
@@ -138,21 +163,20 @@ export class IdeSyncManager {
   unsyncIdeSettings(settingsFile: string): { success: boolean; modified: boolean } {
     if (!fs.existsSync(settingsFile)) return { success: true, modified: false };
 
-    let settings: Record<string, any> = {};
-    const content = fs.readFileSync(settingsFile, "utf-8").trim();
-    if (!content) return { success: true, modified: false };
-    const parsed = parseJsonc(content);
-    if (!parsed) {
+    let text = fs.readFileSync(settingsFile, "utf-8");
+    if (!text.trim()) return { success: true, modified: false };
+    const settings = readSettings(text);
+    if (!settings) {
       return { success: false, modified: false };
     }
-    settings = parsed;
 
     let modified = false;
     const shimsDir = this.store.getPathResolver().getShimsDir();
+    const gitPath = settings["git.path"];
 
-    if (settings["gitbridge.managed"] || (typeof settings["git.path"] === "string" && settings["git.path"].includes(".gitbridge"))) {
-      delete settings["git.path"];
-      delete settings["gitbridge.managed"];
+    if (settings["gitbridge.managed"] || (typeof gitPath === "string" && gitPath.includes(".gitbridge"))) {
+      text = editSetting(text, ["git.path"], undefined);
+      text = editSetting(text, ["gitbridge.managed"], undefined);
       modified = true;
     }
 
@@ -163,25 +187,23 @@ export class IdeSyncManager {
     ];
 
     for (const envKey of envKeys) {
-      if (settings[envKey] && typeof settings[envKey]["PATH"] === "string") {
-        let p = settings[envKey]["PATH"];
-        if (p.includes(shimsDir)) {
-          p = p.replace(`${shimsDir}:`, "").replace(`${shimsDir};`, "").replace(shimsDir, "");
-          if (p === "${env:PATH}" || p === "") {
-            delete settings[envKey]["PATH"];
-          } else {
-            settings[envKey]["PATH"] = p;
-          }
-          if (Object.keys(settings[envKey]).length === 0) {
-            delete settings[envKey];
-          }
-          modified = true;
-        }
+      const env = settings[envKey];
+      if (!env || typeof env !== "object" || Array.isArray(env)) continue;
+      const envPath = (env as Record<string, unknown>)["PATH"];
+      if (typeof envPath !== "string" || !envPath.includes(shimsDir)) continue;
+
+      const stripped = envPath.replace(`${shimsDir}:`, "").replace(`${shimsDir};`, "").replace(shimsDir, "");
+      const otherKeys = Object.keys(env).filter((k) => k !== "PATH");
+      if (stripped === "${env:PATH}" || stripped === "") {
+        text = otherKeys.length === 0 ? editSetting(text, [envKey], undefined) : editSetting(text, [envKey, "PATH"], undefined);
+      } else {
+        text = editSetting(text, [envKey, "PATH"], stripped);
       }
+      modified = true;
     }
 
     if (modified) {
-      fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), { encoding: "utf-8" });
+      fs.writeFileSync(settingsFile, text, { encoding: "utf-8" });
     }
 
     return { success: true, modified };
@@ -241,14 +263,12 @@ export class IdeSyncManager {
       let gitPath: string | undefined;
 
       if (fs.existsSync(t.settingsPath)) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(t.settingsPath, "utf-8"));
-          gitPath = raw["git.path"];
+        const raw = readSettings(fs.readFileSync(t.settingsPath, "utf-8"));
+        if (raw) {
+          gitPath = typeof raw["git.path"] === "string" ? (raw["git.path"] as string) : undefined;
           if (raw["gitbridge.managed"] || (typeof gitPath === "string" && gitPath.includes(".gitbridge"))) {
             synced = true;
           }
-        } catch {
-          // parse error
         }
       }
 

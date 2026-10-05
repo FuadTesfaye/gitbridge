@@ -111,7 +111,7 @@ export class GitCredentialHelperHandler {
 
     const credStore = await StoreFactory.getStore(this.store.getPathResolver());
     const accounts = this.store.loadAccounts();
-    const existing = accounts.find((a) => a.host === payload.host && a.username === payload.username);
+    const existing = accounts.find((a) => hostsEqual(a.host, payload.host!) && a.username === payload.username);
     const accountId = existing ? existing.id : `${payload.host.replace(/[^a-zA-Z0-9]/g, "_")}_${payload.username}`;
 
     await credStore.set(payload.host, accountId, payload.password);
@@ -123,7 +123,7 @@ export class GitCredentialHelperHandler {
 
     const credStore = await StoreFactory.getStore(this.store.getPathResolver());
     const accounts = this.store.loadAccounts();
-    const existing = accounts.find((a) => a.host === payload.host && a.username === payload.username);
+    const existing = accounts.find((a) => hostsEqual(a.host, payload.host!) && a.username === payload.username);
     const accountId = existing ? existing.id : `${payload.host.replace(/[^a-zA-Z0-9]/g, "_")}_${payload.username}`;
 
     await credStore.delete(payload.host, accountId);

@@ -53,6 +53,14 @@ describe("Clone Command Unit Tests", () => {
     await handleCloneCommand("   ", undefined, {}, store);
   });
 
+  it("treats a URL that looks like a git option as a repository name, not as a flag", async () => {
+    const dest = path.join(tempDir, "never-created");
+    // Without `--`, git would parse this as an option; with it, git just fails to find the repo.
+    await handleCloneCommand("--upload-pack=echo", dest, { identity: "personal" }, store);
+    expect(fs.existsSync(dest)).toBe(false);
+    expect(store.getRepository(dest)).toBeUndefined();
+  });
+
   it("clones local repository and sets context with explicit flags", async () => {
     const dest = path.join(tempDir, "cloned-repo");
     await handleCloneCommand(

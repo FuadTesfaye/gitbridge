@@ -83,7 +83,7 @@ When the user asks to configure a specific repository:
 1. **Pin from inside the repository**:
    ```bash
    cd /path/to/my-repo
-   gb repo set . --identity work --provider gitlab --account gitlab_fuadt
+   gb repo set . --identity work --provider gitlab --account gitlab_alice
    ```
 2. **Pin by providing an email directly**:
    ```bash
@@ -101,7 +101,7 @@ When the user asks to configure a specific repository:
 
 1. **Add Identity**:
    ```bash
-   gb id add --id insa --name "Fuad Tesfaye" --email "fuadt@insa.gov.et"
+   gb id add --id work --name "Alice Doe" --email "alice@company.example"
    ```
 2. **Authenticate Provider**:
    ```bash
@@ -109,11 +109,11 @@ When the user asks to configure a specific repository:
    gb auth login github --token <token> --ssh-key ~/.ssh/id_ed25519
 
    # GitLab (cloud or self-hosted) with credentials:
-   gb auth login gitlab -u "fuadt" -p "password" --host "http://172.27.23.116" --ssh-key ~/.ssh/id_ed25519
+   gb auth login gitlab -u "alice" -p "<password>" --host "https://gitlab.company.example" --ssh-key ~/.ssh/id_ed25519
    ```
 3. **Map Directory Rule**:
    ```bash
-   gb rules add ~/Insa insa --provider gitlab --account gitlab_fuadt
+   gb rules add ~/work work --provider gitlab --account gitlab_alice
    ```
 4. **Compile & Activate**:
    ```bash
@@ -132,7 +132,7 @@ GitBridge includes a built-in **Fort Knox** security subsystem:
    ```
    *Inspects:*
    - Filesystem permissions (verifies `0700` directories and `0600` files).
-   - Keyring backend status & hardware-bound AES-256-GCM vault.
+   - Keyring backend status & the encrypted vault fallback (AES-256-GCM, machine-fingerprint key).
    - Staged changes for accidental API tokens, private keys, or `.env` files.
    - Plaintext credentials embedded in Git remote URLs.
    - Pre-commit and pre-push hook protection status.

@@ -42,7 +42,7 @@ All commands, subcommands, and flags are identical between `gitbridge` and `gb`.
 |---|---|---|
 | `gb acc ls` | `gb acc list` | List authenticated provider accounts and linked SSH keys |
 | `gb acc rm <id>` | `gb acc remove <id>` | Delete an account record and remove its secret from OS keychain |
-| `gb auth login [provider]` | `gb auth login` | Authenticate with GitHub, GitLab, or Bitbucket. Supports `-t, --token`, `-u, --username`, `-p, --password`, `--host`, `--ssh-key`. <br>`gb auth login gitlab --host http://172.27.23.116 -u user@insa.gov.et -p 'secret'` |
+| `gb auth login [provider]` | `gb auth login` | Authenticate with GitHub, GitLab, or Bitbucket. Supports `-t, --token`, `-u, --username`, `-p, --password`, `--host`, `--ssh-key`. <br>`gb auth login gitlab --host https://gitlab.company.example -u alice -p '<password>'` |
 | `gb auth logout <provider> [user]` | `gb auth logout` | Log out and revoke credentials from keychain |
 | `gb prov ls` | `gb provider list` | List supported Git providers, active status, accounts, and capabilities |
 | `gb prov enable <id>` | `gb provider enable <id>` | Enable a Git provider for management and auto-detection |
@@ -111,4 +111,5 @@ These commands are called automatically by Git or system hooks:
 | `XDG_CONFIG_HOME` | `~/.config` | Used when `GITBRIDGE_HOME` is unset (`$XDG_CONFIG_HOME/gitbridge`) |
 | `GITBRIDGE_OVERRIDE_BYPASS` | unset | Set to `1` to prevent recursive shim proxying |
 | `GITBRIDGE_REAL_GIT` | Auto-detected | Path to the true underlying system `git` binary |
-| `GITBRIDGE_VAULT_PASSWORD` | unset | Optional password override for AES-256-GCM vault |
+| `GITBRIDGE_VAULT_KEY` | unset | Optional passphrase for the AES-256-GCM vault key (replaces the machine fingerprint; `GITBRIDGE_MASTER_PASSWORD` is accepted too) |
+| `GITBRIDGE_USE_VAULT` | unset | Set to `1` to skip the OS keyring and use the encrypted vault file |

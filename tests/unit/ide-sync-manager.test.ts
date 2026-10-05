@@ -5,6 +5,7 @@ import os from "node:os";
 import { ConfigStore } from "@/core/config/config-store";
 import { PathResolver } from "@/core/config/path-resolver";
 import { IdeSyncManager } from "@/core/ide/ide-sync-manager";
+import { parse as parseJsonc } from "jsonc-parser";
 
 describe("IdeSyncManager", () => {
   let tempDir: string;
@@ -74,6 +75,47 @@ describe("IdeSyncManager", () => {
     expect(restored["workbench.colorTheme"]).toBe("Default Dark+");
     expect(restored["git.path"]).toBeUndefined();
     expect(restored["gitbridge.managed"]).toBeUndefined();
+  });
+
+  it("preserves comments, trailing commas and indentation when syncing and unsyncing", () => {
+    const original = [
+      "{",
+      "    // Keep me: this comment must survive GitBridge edits",
+      '    "editor.fontSize": 14,',
+      '    "workbench.colorTheme": "Default Dark+", // trailing comment',
+      "}",
+      "",
+    ].join("\n");
+    fs.writeFileSync(mockSettingsFile, original);
+
+    expect(manager.syncIdeSettings(mockSettingsFile).success).toBe(true);
+    const synced = fs.readFileSync(mockSettingsFile, "utf-8");
+    expect(synced).toContain("// Keep me: this comment must survive GitBridge edits");
+    expect(synced).toContain("// trailing comment");
+    expect(synced).toContain('    "editor.fontSize": 14,');
+    const syncedParsed = parseJsonc(synced, [], { allowTrailingComma: true });
+    expect(syncedParsed["git.path"]).toBe(store.getPathResolver().getGitShimPath());
+    expect(syncedParsed["gitbridge.managed"]).toBe(true);
+
+    expect(manager.unsyncIdeSettings(mockSettingsFile).modified).toBe(true);
+    const restored = fs.readFileSync(mockSettingsFile, "utf-8");
+    expect(restored).toContain("// Keep me: this comment must survive GitBridge edits");
+    const restoredParsed = parseJsonc(restored, [], { allowTrailingComma: true });
+    expect(restoredParsed["git.path"]).toBeUndefined();
+    expect(restoredParsed["gitbridge.managed"]).toBeUndefined();
+    expect(Object.keys(restoredParsed).some((k) => k.startsWith("terminal.integrated.env"))).toBe(false);
+    expect(restoredParsed["editor.fontSize"]).toBe(14);
+    expect(restoredParsed["workbench.colorTheme"]).toBe("Default Dark+");
+  });
+
+  it("reports a commented settings file as synced after sync", () => {
+    const vscode = manager.getDiscoveredIdeTargets().find((t) => t.type === "vscode")!;
+    fs.mkdirSync(path.dirname(vscode.settingsPath), { recursive: true });
+    fs.writeFileSync(vscode.settingsPath, '{\n  // comment\n  "editor.fontSize": 12,\n}\n');
+    manager.syncAll();
+    expect(manager.getIdeStatus().find((t) => t.type === "vscode")?.synced).toBe(true);
+    manager.unsyncAll();
+    expect(manager.getIdeStatus().find((t) => t.type === "vscode")?.synced).toBe(false);
   });
 
   it("discovers editor settings only inside the sandbox home", () => {

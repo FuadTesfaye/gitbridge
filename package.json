@@ -49,6 +49,7 @@
     "@clack/prompts": "^0.9.1",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
+    "jsonc-parser": "^3.3.1",
     "ora": "^8.2.0",
     "picocolors": "^1.1.1",
     "zod": "^3.24.2"

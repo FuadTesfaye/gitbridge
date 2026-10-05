@@ -45,16 +45,16 @@ describe("ProviderDetector", () => {
   it("detects registered accounts for custom hosts and self-hosted instances", () => {
     // Add custom account
     store.addAccount({
-      id: "gitlab_insa",
+      id: "gitlab_corp",
       providerId: "gitlab",
-      host: "172.27.23.116",
+      host: "192.0.2.10",
       username: "fuadt",
       authType: "oauth",
     });
 
-    const res = detector.detectFromRemote("http://172.27.23.116/fuadt/fleet.git");
+    const res = detector.detectFromRemote("http://192.0.2.10/fuadt/fleet.git");
     expect(res.providerId).toBe("gitlab");
-    expect(res.host).toBe("172.27.23.116");
+    expect(res.host).toBe("192.0.2.10");
     expect(res.isKnown).toBe(true);
     expect(res.confidence).toBeGreaterThanOrEqual(0.9);
   });

@@ -24,7 +24,7 @@ This file provides project architecture, CLI command references, and development
 
 - **Context Engine**: Maps `repository -> remote -> provider -> account -> identity -> SSH credentials`.
 - **Zero Runtime Overhead**: Integrates natively via Git `includeIf`, `credential.helper`, and `~/.ssh/config`.
-- **Security First**: Uses OS Keyrings (Linux Secret Service, macOS Keychain, Windows DPAPI) with hardware-bound AES-256-GCM vault fallback, plus pre-commit/pre-push secret scanning guards.
+- **Security First**: Uses OS Keyrings (Linux Secret Service, macOS Keychain, Windows Credential Manager) with an AES-256-GCM encrypted vault fallback keyed from a machine fingerprint (not hardware-bound: any same-user process can decrypt it), plus pre-commit/pre-push secret scanning guards.
 
 ---
 

@@ -55,6 +55,25 @@ describe("Keyring Stores Unit Tests", () => {
     await store.delete("service", "account");
   });
 
+  it("StoreFactory honours settings.fallbackEncryptedStore outside the test environment", async () => {
+    const { ConfigStore } = await import("@/core/config/config-store");
+    const dir = path.join(os.tmpdir(), `gb-vault-setting-${Date.now()}`);
+    const localPaths = new PathResolver(dir);
+    new ConfigStore(localPaths).updateSettings({ fallbackEncryptedStore: true });
+
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const store = await StoreFactory.getStore(localPaths);
+      expect(store).toBeInstanceOf(EncryptedVaultCredentialStore);
+      expect(store.name).not.toContain("fallback");
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      const fs = await import("node:fs");
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("StoreFactory returns EncryptedVaultCredentialStore when forced or in test", async () => {
     const store = await StoreFactory.getStore(paths, true);
     expect(store).toBeInstanceOf(EncryptedVaultCredentialStore);

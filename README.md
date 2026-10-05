@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@fuad24/gitbridge.svg)](https://www.npmjs.com/package/@fuad24/gitbridge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-225%20passed-brightgreen.svg)](https://github.com/FuadTesfaye/gitbridge)
+[![CI](https://github.com/FuadTesfaye/gitbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/FuadTesfaye/gitbridge/actions/workflows/ci.yml)
 [![Security](https://img.shields.io/badge/security-OS%20keyring%20%2B%20AES--256--GCM-blue.svg)](https://github.com/FuadTesfaye/gitbridge)
 [![Telemetry](https://img.shields.io/badge/telemetry-zero%20(100%25%20offline--first)-blueviolet.svg)](https://github.com/FuadTesfaye/gitbridge)
 
@@ -379,7 +379,7 @@ gb sec check
      ✔ All GitBridge configuration & SSH key files have strict permissions (0700/0600)
   2. Keyring & Vault Architecture
      ✔ Active Keyring Backend: Apple Keychain (with Encrypted Vault fallback)
-     ✔ Authenticated Accounts: 2 stored with hardware-bound entropy
+     ✔ Authenticated Accounts: 2 (tokens in Apple Keychain)
   3. Staged Changes Secret Inspection
      ✔ No plaintext API tokens, private keys, or .env files detected in staging area
   4. Remote URL Plaintext Credential Check
