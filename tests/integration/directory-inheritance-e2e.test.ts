@@ -45,7 +45,7 @@ describe("🌟 Full Directory Inheritance & Glitch-Free E2E Suite", () => {
       id: "gitlab_work",
       providerId: "gitlab",
       username: "workdev",
-      host: "172.27.23.116",
+      host: "192.0.2.10",
       sshPort: 2424,
       authType: "pat",
     });
@@ -99,8 +99,8 @@ describe("🌟 Full Directory Inheritance & Glitch-Free E2E Suite", () => {
     const workRuleContent = fs.readFileSync(ruleWorkFile!, "utf-8");
 
     expect(workRuleContent).toContain("email = work@corp.com");
-    expect(workRuleContent).toContain('insteadOf = git@172.27.23.116:');
-    expect(workRuleContent).toContain('insteadOf = ssh://git@172.27.23.116:2424/');
+    expect(workRuleContent).toContain('insteadOf = git@192.0.2.10:');
+    expect(workRuleContent).toContain('insteadOf = ssh://git@192.0.2.10:2424/');
   });
 
   it("automatically inherits work identity and gitlab account for repos inside work folder", async () => {
@@ -126,7 +126,7 @@ describe("🌟 Full Directory Inheritance & Glitch-Free E2E Suite", () => {
     expect(ctx.identity?.email).toBe("work@corp.com");
     expect(ctx.source).toBe("directory_rule");
     expect(ctx.account?.id).toBe("gitlab_work");
-    expect(ctx.account?.host).toBe("172.27.23.116");
+    expect(ctx.account?.host).toBe("192.0.2.10");
     expect(ctx.account?.sshPort).toBe(2424);
   });
 

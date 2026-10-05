@@ -33,7 +33,7 @@ A developer should be able to work across GitHub, GitLab, Bitbucket, multiple ac
 ### Core Philosophy: Native & Non-Intrusive
 - **Zero Runtime Wrapper Overhead**: GitBridge integrates natively into Git and SSH configuration files (`~/.gitconfig` via `includeIf`, `credential.helper`, and `~/.ssh/config`). Standard Git commands (`git commit`, `git push`, IDE GUIs) run directly against the native Git executable without mandatory custom wrappers.
 - **Discover Broadly, Configure Narrowly, Activate Lazily**: Scans environment to detect existing Git configurations, configures *only* the providers the user actually uses, and lazily discovers new/self-hosted instances on the fly.
-- **Hardware & Native Keychain Security**: Personal access tokens and credentials are saved in OS-native secure storage (macOS Keychain, Linux Secret Service / `libsecret`, Windows Credential Manager / DPAPI) with an AES-256-GCM PBKDF2-derived encrypted vault fallback.
+- **Native Keychain Security**: Personal access tokens and credentials are saved in OS-native secure storage (macOS Keychain, Linux Secret Service / `libsecret`, Windows Credential Manager) with an AES-256-GCM encrypted vault fallback whose PBKDF2 key is derived from a machine fingerprint. The vault is not hardware-bound: any process running as the same user can decrypt it, and `gb auth login` says when it had to be used.
 - **Companion IDE Extension**: Includes a first-class editor extension (`extension/`) supporting VS Code, Cursor, and Antigravity IDE for status-bar identity monitoring, one-click switching, and context inspection.
 
 ---

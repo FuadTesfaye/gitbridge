@@ -120,7 +120,7 @@ Headless Linux environments, SSH servers, or Docker containers often lack a runn
 **Resolution**:
 GitBridge automatically falls back to `EncryptedVault` stored at `~/.gitbridge/vault.enc`.
 - To enforce the encrypted vault explicitly, ensure `fallbackEncryptedStore: true` is configured in `settings`.
-- You can supply an optional master password via the `GITBRIDGE_VAULT_PASSWORD` environment variable.
+- You can supply an optional passphrase for the vault key via the `GITBRIDGE_VAULT_KEY` environment variable.
 
 ---
 

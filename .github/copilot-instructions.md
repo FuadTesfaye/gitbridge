@@ -15,6 +15,6 @@ It maps repositories to identities (name, email, signing key), accounts (tokens 
 
 ## Code Conventions
 - Strict TypeScript with Zod schemas for all configs (`src/core/config/schema.ts`).
-- Secure storage abstraction (`StoreFactory`) supporting Linux Secret Service (`secret-tool`), macOS Keychain (`security`), Windows DPAPI (`cmdkey`), and fallback `EncryptedVault` (AES-256-GCM with hardware-bound PBKDF2).
+- Secure storage abstraction (`StoreFactory`) supporting Linux Secret Service (`secret-tool`), macOS Keychain (`security -i`), Windows Credential Manager (`CredWrite`/`CredRead` over stdin), and fallback `EncryptedVault` (AES-256-GCM, PBKDF2 key derived from a machine fingerprint; not hardware-bound).
 - Zero leaks: All tokens masked with `redactSecret` in output. Strict `0700` directories and `0600` file permissions.
 - Test runner: `bun test` (all unit and integration tests under `tests/`).

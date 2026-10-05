@@ -64,7 +64,7 @@ Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS) and type `GitBridge`:
 ## 🔒 Security & Privacy
 
 - **100% Local**: GitBridge operates exclusively on your machine with **zero telemetry, zero cloud tracking, and no external servers**.
-- **Hardware-Backed Keychains**: All access tokens are stored directly in your OS native secure storage (**Linux Secret Service / Keyring**, **macOS Keychain**, or **Windows Credential Manager**).
+- **OS-Native Keychains**: All access tokens are stored directly in your OS native secure storage (**Linux Secret Service / Keyring**, **macOS Keychain**, or **Windows Credential Manager**), with an encrypted vault file as fallback when the keyring is unavailable.
 
 ---
 
