@@ -40,6 +40,41 @@ describe("ConfigStore", () => {
     expect(config.defaultIdentityId).toBe("personal");
   });
 
+  it("strips control characters from identity, account and rule fields at input", () => {
+    const identity = store.addIdentity({
+      id: "evil\r\nid",
+      name: "Mallory\n[core]\n\tsshCommand = /tmp/evil",
+      email: "mallory@example.com\r",
+      signingKey: "ssh-ed25519 AAAA\n[core]",
+    });
+    expect(identity.id).toBe("evilid");
+    expect(identity.name).toBe("Mallory[core]\tsshCommand = /tmp/evil".replace("\t", ""));
+    expect(identity.name).not.toMatch(/[\r\n]/);
+    expect(identity.email).toBe("mallory@example.com");
+    expect(identity.signingKey).not.toMatch(/[\r\n]/);
+
+    const updated = store.updateIdentity("evilid", { name: "Still\nMallory" });
+    expect(updated.name).toBe("StillMallory");
+
+    const account = store.addAccount({
+      id: "gh\nmallory",
+      providerId: "github",
+      host: "github.com\r\n",
+      username: "mal\nlory",
+      displayName: "Mal\nlory",
+      authType: "pat",
+    });
+    expect(account.id).toBe("ghmallory");
+    expect(account.host).toBe("github.com");
+    expect(account.username).toBe("mallory");
+    expect(account.displayName).toBe("Mallory");
+
+    const rule = store.addRule({ id: "rule\n[core]", path: "~/work\n", identityId: "evilid\r" });
+    expect(rule.id).toBe("rule[core]");
+    expect(rule.path).toBe("~/work");
+    expect(rule.identityId).toBe("evilid");
+  });
+
   it("manages multiple identities and switches default", () => {
     store.addIdentity({ id: "personal", name: "Fuad P", email: "p@example.com" });
     store.addIdentity({ id: "work", name: "Fuad W", email: "w@company.com" });

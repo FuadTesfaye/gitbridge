@@ -14,6 +14,7 @@ import {
   type GitBridgeSettings,
 } from "./schema";
 import { ConfigError } from "@/utils/errors";
+import { sanitizeConfigString } from "@/utils/security";
 
 export interface CreateIdentityInput {
   id: string;
@@ -195,11 +196,13 @@ export class ConfigStore {
     }
 
     const isFirst = list.length === 0;
+    // Strip CR/LF and other control characters at the door: these values end up
+    // in gitconfig files, hook output and `gb env` shell exports.
     const newIdentity: GitIdentity = {
-      id: identity.id,
-      name: identity.name,
-      email: identity.email,
-      signingKey: identity.signingKey || null,
+      id: sanitizeConfigString(identity.id),
+      name: sanitizeConfigString(identity.name),
+      email: sanitizeConfigString(identity.email),
+      signingKey: identity.signingKey ? sanitizeConfigString(identity.signingKey) || null : null,
       isDefault: identity.isDefault ?? isFirst,
       createdAt: new Date().toISOString(),
     };
@@ -233,7 +236,14 @@ export class ConfigStore {
     const updated: GitIdentity = {
       ...list[index],
       ...updates,
-      signingKey: updates.signingKey !== undefined ? updates.signingKey : list[index].signingKey,
+      name: updates.name !== undefined ? sanitizeConfigString(updates.name) : list[index].name,
+      email: updates.email !== undefined ? sanitizeConfigString(updates.email) : list[index].email,
+      signingKey:
+        updates.signingKey !== undefined
+          ? updates.signingKey
+            ? sanitizeConfigString(updates.signingKey) || null
+            : null
+          : list[index].signingKey,
     };
 
     list[index] = updated;
@@ -302,10 +312,13 @@ export class ConfigStore {
     const existingIndex = list.findIndex((a) => a.id === account.id);
     const newAccount: ProviderAccount = {
       ...account,
-      displayName: account.displayName ?? undefined,
-      email: account.email ?? undefined,
+      id: sanitizeConfigString(account.id),
+      host: sanitizeConfigString(account.host),
+      username: sanitizeConfigString(account.username),
+      displayName: account.displayName ? sanitizeConfigString(account.displayName) : undefined,
+      email: account.email ? sanitizeConfigString(account.email) : undefined,
       identityId: account.identityId ?? undefined,
-      sshKeyPath: account.sshKeyPath ?? undefined,
+      sshKeyPath: account.sshKeyPath ? sanitizeConfigString(account.sshKeyPath) : undefined,
       sshPort: account.sshPort ?? undefined,
       createdAt: new Date().toISOString(),
     };
@@ -335,7 +348,13 @@ export class ConfigStore {
     return this.loadConfig().rules;
   }
 
-  addRule(rule: DirectoryRule): DirectoryRule {
+  addRule(input: DirectoryRule): DirectoryRule {
+    const rule: DirectoryRule = {
+      ...input,
+      id: sanitizeConfigString(input.id),
+      path: sanitizeConfigString(input.path),
+      identityId: sanitizeConfigString(input.identityId),
+    };
     const config = this.loadConfig();
     const existingIndex = config.rules.findIndex((r) => r.id === rule.id || r.path === rule.path);
     if (existingIndex >= 0) {
