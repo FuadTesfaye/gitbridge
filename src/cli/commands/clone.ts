@@ -12,7 +12,8 @@ import { execProcess } from "@/utils/proc";
 import { parseRemoteUrl } from "@/core/git/url-parser";
 import { promptSelect } from "../ui/prompts";
 import { logger } from "@/utils/logger";
-import { sanitizeSshKeyPath } from "@/utils/security";
+import { sanitizeSshKeyPath, isSafeSshIdentityFile } from "@/utils/security";
+import { hostsEqual } from "@/utils/hosts";
 import type { GitProviderType, RepositoryRemote } from "@/core/config/schema";
 
 export interface CloneCommandOptions {
@@ -97,7 +98,9 @@ export async function handleCloneCommand(
     }
   }
 
-  const accounts = store.loadAccounts().filter((a) => a.providerId === detection.providerId || a.host === detection.host);
+  const accounts = store
+    .loadAccounts()
+    .filter((a) => a.providerId === detection.providerId || hostsEqual(a.host, detection.host));
   const identities = store.loadIdentities();
 
   let selectedAccountId: string | undefined = options.account;
@@ -192,19 +195,25 @@ export async function handleCloneCommand(
   const targetDirName = destination || (parsed ? parsed.repo : path.basename(cleanUrl).replace(/\.git$/, ""));
   const spinner = ora(`Cloning repository into '${targetDirName}'...`).start();
 
-  const args = ["clone", cloneUrl];
+  // `--` makes git treat the URL and destination as operands even if they start with a dash.
+  const args = ["clone", "--", cloneUrl];
   if (destination) {
     args.push(destination);
   }
 
   const selectedAccount = selectedAccountId ? accounts.find((a) => a.id === selectedAccountId) : undefined;
   const cloneEnv: Record<string, string> = {};
-  if (selectedAccount?.sshKeyPath && fs.existsSync(selectedAccount.sshKeyPath)) {
+  if (
+    selectedAccount?.sshKeyPath &&
+    fs.existsSync(selectedAccount.sshKeyPath) &&
+    isSafeSshIdentityFile(selectedAccount.sshKeyPath)
+  ) {
     const safeKey = sanitizeSshKeyPath(selectedAccount.sshKeyPath);
     cloneEnv.GIT_SSH_COMMAND = `ssh -i "${safeKey}" -o IdentitiesOnly=yes`;
   }
 
-  const result = await execProcess("git", args, { env: cloneEnv });
+  // allowFailure so a failed clone is reported below instead of surfacing as an unhandled rejection.
+  const result = await execProcess("git", args, { env: cloneEnv, allowFailure: true });
   if (result.exitCode !== 0) {
     spinner.fail("git clone failed.");
     console.error(pc.red(result.stderr || result.stdout));
