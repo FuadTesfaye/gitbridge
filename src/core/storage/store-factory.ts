@@ -4,6 +4,7 @@ import { MacOSKeychainCredentialStore } from "./macos-keychain";
 import { WindowsCredentialStore } from "./windows-cred";
 import { EncryptedVaultCredentialStore } from "./encrypted-vault";
 import { PathResolver, defaultPathResolver } from "../config/path-resolver";
+import { ConfigStore } from "../config/config-store";
 
 export class CompositeCredentialStore implements CredentialStore {
   readonly name: string;
@@ -63,6 +64,15 @@ export class StoreFactory {
 
     if (forceEncrypted || process.env.GITBRIDGE_USE_VAULT === "1" || process.env.NODE_ENV === "test") {
       return vault;
+    }
+
+    // settings.fallbackEncryptedStore was documented but never read.
+    try {
+      if (new ConfigStore(paths).loadConfig().settings.fallbackEncryptedStore) {
+        return vault;
+      }
+    } catch {
+      // unreadable config: fall through to the platform keyring
     }
 
     if (process.platform === "darwin") {

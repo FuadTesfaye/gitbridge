@@ -1,3 +1,5 @@
+import { GITBRIDGE_VERSION } from "@/version";
+
 export interface HttpRequestOptions {
   headers?: Record<string, string>;
   timeoutMs?: number;
@@ -31,7 +33,7 @@ export async function requestJson<T>(
 
   try {
     const headers: Record<string, string> = {
-      "User-Agent": "GitBridge-CLI/0.1.0",
+      "User-Agent": `GitBridge-CLI/${GITBRIDGE_VERSION}`,
       Accept: "application/json",
       ...options.headers,
     };
