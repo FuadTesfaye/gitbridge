@@ -1,5 +1,15 @@
 # GitBridge 🌉
 
+```text
+   ____ _ _   ____       _     _            
+  / ___(_) |_| __ ) _ __(_) __| | __ _  ___ 
+ | |  _| | __|  _ \| '__| |/ _` |/ _` |/ _ \
+ | |_| | | |_| |_) | |  | | (_| | (_| |  __/
+  \____|_|\__|____/|_|  |_|\__,_|\__, |\___|
+                                 |___/      
+  Universal Git Identity & Multi-Account Management Layer
+```
+
 [![npm version](https://img.shields.io/npm/v/@fuad24/gitbridge.svg)](https://www.npmjs.com/package/@fuad24/gitbridge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
@@ -106,6 +116,9 @@ Personal access tokens and OAuth secrets are **never stored in plaintext** in Gi
 - **Secrets stay off the command line**: tokens reach `secret-tool`, the macOS `security` tool and Windows `CredWrite` over stdin, and `gb ssh generate` lets `ssh-keygen` prompt for the passphrase itself, so nothing sensitive is visible to other users via `ps`.
 
 ### Strict Defensive Hardening
+- **OpenSSH Agent Bleed Isolation**: Generated SSH host configurations enforce `IdentityAgent none` and `IdentitiesOnly yes`, guaranteeing OpenSSH queries strictly the specified account key instead of offering agent keys that belong to other accounts.
+- **Comment-Preserving IDE Sync**: Configuration edits in VS Code, Cursor, and Antigravity use `jsonc-parser`, preserving developer comments and formatting without syntax regressions.
+- **Command Injection & Operand Isolation**: `gb clone` and proxy commands enforce `--` operand boundaries, preventing flag injection vulnerabilities (such as `--upload-pack`) from executing arbitrary code.
 - **POSIX Permission Lockdown**: `~/.gitbridge` directories are `0700`, sensitive files are written atomically with mode `0600`.
 - **CRLF and token injection controls**: User inputs written into Git/SSH config are sanitized; SSH `Host`/`IdentityFile` values are allowlisted.
 - **Credential helper host matching**: Git only receives a PAT when the requested host matches the stored account. The helper is `!gitbridge credential` so native Git can invoke it.

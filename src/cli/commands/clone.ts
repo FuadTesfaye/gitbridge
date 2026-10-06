@@ -49,8 +49,8 @@ export async function handleCloneCommand(
   console.log("  ──────────────────────────────────────────────────");
   console.log(`  Target URL:             ${pc.cyan(cleanUrl)}`);
 
-  // Handle unknown/custom provider (only prompt for remote non-local URLs in interactive TTY)
-  if (!isLocalGit && !detection.isKnown && detection.providerId === "custom") {
+  // Handle unknown/custom provider (only prompt for remote non-local URLs with a valid host in interactive TTY)
+  if (!isLocalGit && !detection.isKnown && detection.providerId === "custom" && Boolean(detection.host?.trim())) {
     if (process.stdin.isTTY) {
       console.log(pc.yellow(`\n  ⚠ Unrecognized Git host: ${pc.bold(detection.host)}`));
       const chosenType = await promptSelect<GitProviderType>({

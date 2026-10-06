@@ -44,7 +44,8 @@ export class SshConfigGenerator {
           content += `    Port ${account.sshPort}\n`;
         }
         content += `    IdentityFile "${keyPath}"\n`;
-        content += `    IdentitiesOnly yes\n\n`;
+        content += `    IdentitiesOnly yes\n`;
+        content += `    IdentityAgent none\n\n`;
       }
     }
 
