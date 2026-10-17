@@ -134,7 +134,7 @@ GitBridge provides dual binaries: `gitbridge` (verbose) and `gb` (fast shorthand
 ### Installation & Setup
 - **Linux & macOS (1-liner)**: `curl -fsSL https://cdn.jsdelivr.net/gh/FuadTesfaye/gitbridge@main/install.sh | bash`
 - **Windows PowerShell (1-liner)**: `irm https://cdn.jsdelivr.net/gh/FuadTesfaye/gitbridge@main/install.ps1 | iex`
-- **npm / Bun**: `npm install -g @fuad24/gitbridge` or `bun add -g @fuad24/gitbridge`
+- **npm / Bun**: `npm install -g @fuax24/gitbridge` or `bun add -g @fuax24/gitbridge`
 
 ### Setup, Status, Context & Diagnostics
 - `gb setup` (`gitbridge setup`): Progressive onboarding wizard (`-q, --quick` for 1-second instant setup).

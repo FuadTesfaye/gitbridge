@@ -51,17 +51,17 @@ describe("Update Command", () => {
   describe("fetchLatestVersion", () => {
     it("returns the version the registry reports", async () => {
       mockRegistry(() => ({ status: 200, body: { version: "9.9.9" } }));
-      expect(await fetchLatestVersion("@fuad24/gitbridge")).toBe("9.9.9");
+      expect(await fetchLatestVersion("@fuax24/gitbridge")).toBe("9.9.9");
     });
 
     it("returns null for non-existent packages", async () => {
       mockRegistry(() => ({ status: 404, body: { error: "Not found" } }));
-      expect(await fetchLatestVersion("@fuad24/non-existent-package-xyz-12345")).toBeNull();
+      expect(await fetchLatestVersion("@fuax24/non-existent-package-xyz-12345")).toBeNull();
     });
 
     it("returns null when the registry answers with something that is not a version", async () => {
       mockRegistry(() => ({ status: 200, body: { version: "9.9.9 --registry http://evil" } }));
-      expect(await fetchLatestVersion("@fuad24/gitbridge")).toBeNull();
+      expect(await fetchLatestVersion("@fuax24/gitbridge")).toBeNull();
     });
 
     it("refuses to query a cleartext registry", async () => {
@@ -70,7 +70,7 @@ describe("Update Command", () => {
         called = true;
         return { status: 200, body: { version: "9.9.9" } };
       });
-      expect(await fetchLatestVersion("@fuad24/gitbridge", "http://registry.example.com")).toBeNull();
+      expect(await fetchLatestVersion("@fuax24/gitbridge", "http://registry.example.com")).toBeNull();
       expect(called).toBe(false);
     });
   });

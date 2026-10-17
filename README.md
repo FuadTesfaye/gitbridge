@@ -10,7 +10,7 @@
   Universal Git Identity & Multi-Account Management Layer
 ```
 
-[![npm version](https://img.shields.io/npm/v/@fuad24/gitbridge.svg)](https://www.npmjs.com/package/@fuad24/gitbridge)
+[![npm version](https://img.shields.io/npm/v/@fuax24/gitbridge.svg)](https://www.npmjs.com/package/@fuax24/gitbridge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 [![CI](https://github.com/FuadTesfaye/gitbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/FuadTesfaye/gitbridge/actions/workflows/ci.yml)
@@ -143,9 +143,9 @@ irm https://cdn.jsdelivr.net/gh/FuadTesfaye/gitbridge@main/install.ps1 | iex
 
 ### Global Install via npm or Bun
 ```bash
-npm install -g @fuad24/gitbridge
+npm install -g @fuax24/gitbridge
 # or
-bun add -g @fuad24/gitbridge
+bun add -g @fuax24/gitbridge
 ```
 
 ### Dual CLI Binaries
@@ -560,8 +560,7 @@ bun run bin/gb.ts st
 
 ### Continuous Integration & Releases
 
-- `.github/workflows/ci.yml` typechecks, tests and builds every push and pull request.
-- `.github/workflows/release.yml` publishes to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements) when a `v*` tag is pushed, after checking that the tag matches `package.json`. Once a release has been published this way you can verify that the package on npm was built from this repository with `npm audit signatures`.
+- `.github/workflows/ci.yml` typechecks, tests, and builds every push and pull request. When pushing to `main` (or a `v*` tag), it automatically detects new versions and publishes to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements). You can verify that the package on npm was built from this repository with `npm audit signatures`.
 
 ---
 

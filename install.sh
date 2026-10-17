@@ -48,19 +48,19 @@ RUNTIME=""
 
 if command -v bun >/dev/null 2>&1; then
     RUNTIME="bun"
-    INSTALL_CMD="bun add -g @fuad24/gitbridge@latest"
+    INSTALL_CMD="bun add -g @fuax24/gitbridge@latest"
     echo -e "   ${GREEN}✔${NC} Found ${CYAN}Bun${NC} ($(bun --version))"
 elif command -v npm >/dev/null 2>&1; then
     RUNTIME="npm"
-    INSTALL_CMD="npm install -g @fuad24/gitbridge@latest"
+    INSTALL_CMD="npm install -g @fuax24/gitbridge@latest"
     echo -e "   ${GREEN}✔${NC} Found ${CYAN}Node.js & npm${NC} (node $(node -v 2>/dev/null || echo ''))"
 elif command -v pnpm >/dev/null 2>&1; then
     RUNTIME="pnpm"
-    INSTALL_CMD="pnpm add -g @fuad24/gitbridge@latest"
+    INSTALL_CMD="pnpm add -g @fuax24/gitbridge@latest"
     echo -e "   ${GREEN}✔${NC} Found ${CYAN}pnpm${NC}"
 elif command -v yarn >/dev/null 2>&1; then
     RUNTIME="yarn"
-    INSTALL_CMD="yarn global add @fuad24/gitbridge@latest"
+    INSTALL_CMD="yarn global add @fuax24/gitbridge@latest"
     echo -e "   ${GREEN}✔${NC} Found ${CYAN}yarn${NC}"
 else
     echo -e "   ${YELLOW}○ No Bun or Node.js runtime detected.${NC}"
@@ -70,7 +70,7 @@ else
         export BUN_INSTALL="$HOME/.bun"
         export PATH="$BUN_INSTALL/bin:$PATH"
         RUNTIME="bun"
-        INSTALL_CMD="bun add -g @fuad24/gitbridge@latest"
+        INSTALL_CMD="bun add -g @fuax24/gitbridge@latest"
         echo -e "   ${GREEN}✔${NC} Bun installed successfully!"
     else
         echo -e "${RED}Error: Failed to install Bun. Please install Node.js (v18+) or Bun manually and rerun.${NC}"
@@ -79,7 +79,7 @@ else
 fi
 
 # 3. Install or update GitBridge
-echo -e "\n${BOLD}3. Installing GitBridge CLI (@fuad24/gitbridge):${NC}"
+echo -e "\n${BOLD}3. Installing GitBridge CLI (@fuax24/gitbridge):${NC}"
 echo -e "   ${GRAY}Running: ${INSTALL_CMD}${NC}"
 
 if $INSTALL_CMD; then
@@ -87,7 +87,7 @@ if $INSTALL_CMD; then
 else
     echo -e "   ${YELLOW}Retrying with global flags...${NC}"
     if [ "$RUNTIME" = "npm" ]; then
-        npm install -g @fuad24/gitbridge@latest || true
+        npm install -g @fuax24/gitbridge@latest || true
     fi
 fi
 
