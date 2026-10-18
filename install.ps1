@@ -27,20 +27,20 @@ $hasNpm = Get-Command npm -ErrorAction SilentlyContinue
 
 if ($hasBun) {
     Write-Host "   ✔ Found Bun ($(& bun --version))" -ForegroundColor Green
-    $installCmd = "bun add -g @fuax24/gitbridge@latest"
+    $installCmd = "bun add -g @gitbridge101/gitbridge@latest"
 } elseif ($hasNpm) {
     Write-Host "   ✔ Found Node.js & npm" -ForegroundColor Green
-    $installCmd = "npm install -g @fuax24/gitbridge@latest"
+    $installCmd = "npm install -g @gitbridge101/gitbridge@latest"
 } else {
     Write-Host "   ○ No Bun or Node.js runtime detected." -ForegroundColor Yellow
     Write-Host "   Installing Bun for Windows..." -ForegroundColor Cyan
     irm bun.sh/install.ps1 | iex
     $env:PATH = "$env:USERPROFILE\.bun\bin;$env:PATH"
-    $installCmd = "bun add -g @fuax24/gitbridge@latest"
+    $installCmd = "bun add -g @gitbridge101/gitbridge@latest"
 }
 
 # 3. Install Package
-Write-Host "`n3. Installing GitBridge CLI (@fuax24/gitbridge):" -ForegroundColor White
+Write-Host "`n3. Installing GitBridge CLI (@gitbridge101/gitbridge):" -ForegroundColor White
 Invoke-Expression $installCmd
 
 # 4. Success Banner

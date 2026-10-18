@@ -1,5 +1,5 @@
 {
-  "name": "@fuax24/gitbridge",
+  "name": "@gitbridge101/gitbridge",
   "version": "0.1.0",
   "description": "Universal Git Identity & Multi-Account Management Layer",
   "main": "dist/index.js",

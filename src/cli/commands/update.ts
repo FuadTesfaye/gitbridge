@@ -4,7 +4,7 @@ import { logger } from "@/utils/logger";
 import { execProcess } from "@/utils/proc";
 import { isHttpsUrl } from "@/utils/hosts";
 
-const PACKAGE_NAME = "@fuax24/gitbridge";
+const PACKAGE_NAME = "@gitbridge101/gitbridge";
 const DEFAULT_REGISTRY = "https://registry.npmjs.org";
 
 /** Strict semver (optional pre-release/build). The only shape ever passed to `npm install`. */

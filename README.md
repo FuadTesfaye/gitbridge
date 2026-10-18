@@ -10,7 +10,7 @@
   Universal Git Identity & Multi-Account Management Layer
 ```
 
-[![npm version](https://img.shields.io/npm/v/@fuax24/gitbridge.svg)](https://www.npmjs.com/package/@fuax24/gitbridge)
+[![npm version](https://img.shields.io/npm/v/@gitbridge101/gitbridge.svg)](https://www.npmjs.com/package/@gitbridge101/gitbridge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 [![CI](https://github.com/FuadTesfaye/gitbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/FuadTesfaye/gitbridge/actions/workflows/ci.yml)
@@ -143,9 +143,9 @@ irm https://cdn.jsdelivr.net/gh/FuadTesfaye/gitbridge@main/install.ps1 | iex
 
 ### Global Install via npm or Bun
 ```bash
-npm install -g @fuax24/gitbridge
+npm install -g @gitbridge101/gitbridge
 # or
-bun add -g @fuax24/gitbridge
+bun add -g @gitbridge101/gitbridge
 ```
 
 ### Dual CLI Binaries
