@@ -190,7 +190,9 @@ export async function handleAuthLogin(
         displayName: user.displayName || undefined,
         email: user.email || undefined,
         authType,
+        identityId: existingAccount?.identityId,
         sshKeyPath: sshKeyPath || existingAccount?.sshKeyPath,
+        sshPort: existingAccount?.sshPort,
       });
 
       // Update SSH config

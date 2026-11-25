@@ -140,7 +140,9 @@ export class BridgeService {
       displayName: user.displayName || undefined,
       email: user.email || undefined,
       authType: "pat",
+      identityId: existingAccount?.identityId,
       sshKeyPath: existingAccount?.sshKeyPath,
+      sshPort: existingAccount?.sshPort,
     });
     this.sshGen.generate();
     return written;

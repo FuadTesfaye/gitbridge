@@ -104,10 +104,12 @@ describe("Setup account onboarding and persistent credentials", () => {
       expect(await handleAuthLogin(provider, { username: "Alice", token: "test-token-alice", skipSsh: true }, store)).toBe(true);
     }
     expect(await handleAuthLogin("gitlab", { username: "alice", token: "test-token-alice", host: "gitlab.example.com", skipSsh: true }, store)).toBe(true);
-    store.addAccount({ ...store.getAccount("github_alice")!, sshKeyPath: path.join(root, "key") });
+    store.addAccount({ ...store.getAccount("github_alice")!, sshKeyPath: path.join(root, "key"), sshPort: 2222, identityId: "work" });
     expect(await handleAuthLogin("github", { username: "alice", token: "test-token-alice", skipSsh: true }, store)).toBe(true);
     expect(store.loadAccounts()).toHaveLength(4);
     expect(store.getAccount("github_alice")?.sshKeyPath).toBe(path.join(root, "key"));
+    expect(store.getAccount("github_alice")?.sshPort).toBe(2222);
+    expect(store.getAccount("github_alice")?.identityId).toBe("work");
     await handleAuthLogout("github", "alice", store);
     expect(await vault.get("github.com", "github_alice")).toBeNull();
     expect(store.loadAccounts()).toHaveLength(3);
@@ -125,6 +127,10 @@ describe("Setup account onboarding and persistent credentials", () => {
   it("checks usernames and persists multiple accounts through the editor bridge too", async () => {
     const bridge = new BridgeService(store);
     await bridge.loginWithToken("github", "test-token-alice", undefined, "alice");
+    store.addAccount({ ...store.getAccount("github_alice")!, identityId: "work", sshPort: 2222 });
+    await bridge.loginWithToken("github", "test-token-alice", undefined, "alice");
+    expect(store.getAccount("github_alice")?.identityId).toBe("work");
+    expect(store.getAccount("github_alice")?.sshPort).toBe(2222);
     await bridge.loginWithToken("github", "test-token-bob", undefined, "bob");
     await expect(bridge.loginWithToken("github", "test-token-bob", undefined, "alice")).rejects.toThrow("belongs to '@bob'");
     expect(new BridgeService(new ConfigStore(store.getPathResolver())).loadAccounts()).toHaveLength(2);
