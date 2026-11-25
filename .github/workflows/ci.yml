@@ -88,7 +88,7 @@ jobs:
             echo "Version ${PKG_VERSION} of ${PKG_NAME} is already published on npm. Skipping publication."
           else
             echo "New version detected. Publishing ${PKG_NAME}@${PKG_VERSION} to npm with provenance..."
-            npm publish --provenance --access public --ignore-scripts
+            npm publish --provenance --access public --ignore-scripts --loglevel verbose
             echo "Successfully published ${PKG_NAME}@${PKG_VERSION} to npm!"
           fi
         env:
