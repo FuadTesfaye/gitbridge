@@ -166,6 +166,16 @@ gb setup --quick
 gb setup
 ```
 
+Guided setup lets you connect as many accounts as you need for each selected
+provider. Enter the account's username and personal access token, then choose
+**Add another account** until you are done. GitBridge checks that each token
+belongs to the username you entered and remembers the account and its securely
+stored token across restarts. Running setup again keeps your saved accounts.
+SSH keys can be linked later with `gb ssh link`.
+
+The editor extension's **Connect Git Provider Account** action also asks for a
+username and masked token and lets you connect another account after saving.
+
 ### Step 2: Add Your Identities
 ```bash
 # Add personal identity:

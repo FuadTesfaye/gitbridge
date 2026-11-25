@@ -7,7 +7,7 @@ import { handleIdentityAdd } from "./identity";
 import { handleAuthLogin } from "./auth";
 import { handleRuleAdd } from "./rule";
 import { handleEnableCommand } from "./enable";
-import { promptConfirm, promptMultiSelect, promptSelect, promptText } from "../ui/prompts";
+import { promptConfirm, promptMultiSelect, promptText } from "../ui/prompts";
 import { showBanner } from "../ui/banners";
 import { logger } from "@/utils/logger";
 import type { GitProviderType } from "@/core/config/schema";
@@ -127,21 +127,19 @@ export async function handleSetupCommand(options: SetupOptions = {}, store: Conf
       const existingAccounts = store.loadAccounts().filter((a) => a.providerId === provId);
       if (existingAccounts.length > 0) {
         console.log(`  ${pc.green("✔")} ${provider.name} has ${existingAccounts.length} account(s) configured: ${existingAccounts.map((a) => a.username).join(", ")}`);
-        const addAnother = await promptConfirm({
-          message: `Add another account for ${provider.name}?`,
-          initialValue: false,
+      }
+      let connect = await promptConfirm({
+        message: existingAccounts.length > 0
+          ? `Add another account for ${provider.name}?`
+          : `Connect an account for ${provider.name} now?`,
+        initialValue: existingAccounts.length === 0,
+      });
+      while (connect) {
+        const saved = await handleAuthLogin(provId, { patOnly: true, skipSsh: true }, store);
+        connect = await promptConfirm({
+          message: saved ? `Add another account for ${provider.name}?` : `Try connecting a ${provider.name} account again?`,
+          initialValue: !saved,
         });
-        if (addAnother) {
-          await handleAuthLogin(provId, {}, store);
-        }
-      } else {
-        const connectNow = await promptConfirm({
-          message: `Connect an account for ${provider.name} now?`,
-          initialValue: true,
-        });
-        if (connectNow) {
-          await handleAuthLogin(provId, {}, store);
-        }
       }
     }
   }

@@ -14,6 +14,7 @@ import { IdentityGuard } from "../../../src/core/safety/identity-guard";
 import type { GitIdentity, ProviderAccount, DirectoryRule, RepositoryProfile } from "../../../src/core/config/schema";
 import type { CredentialWriteResult } from "../../../src/core/storage/credential-store";
 import { buildAccountId } from "../../../src/core/config/account-id";
+import { verifyAccountUsername } from "../../../src/core/providers/account-username";
 
 export class BridgeService {
   private store: ConfigStore;
@@ -120,12 +121,16 @@ export class BridgeService {
     return res;
   }
 
-  async loginWithToken(providerId: string, token: string, host?: string): Promise<CredentialWriteResult> {
+  async loginWithToken(providerId: string, token: string, host?: string, username?: string): Promise<CredentialWriteResult> {
     const provider = defaultProviderRegistry.get(providerId);
     if (!provider) throw new Error(`Unknown provider '${providerId}'.`);
     const user = await provider.getUser(token, host);
+    verifyAccountUsername(username, user.username);
     const cleanHost = (host || provider.defaultHost).replace(/^https?:\/\//, "").replace(/\/.*$/, "");
     const accountId = buildAccountId(provider.id, user.username, cleanHost, provider.defaultHost, this.store.loadAccounts());
+    const existingAccount = this.store.getAccount(accountId);
+    const credStore = await StoreFactory.getStore(this.store.getPathResolver());
+    const written = await credStore.set(cleanHost, accountId, token);
     defaultProviderRegistry.enableProvider(provider.id, this.store);
     this.store.addAccount({
       id: accountId,
@@ -135,9 +140,8 @@ export class BridgeService {
       displayName: user.displayName || undefined,
       email: user.email || undefined,
       authType: "pat",
+      sshKeyPath: existingAccount?.sshKeyPath,
     });
-    const credStore = await StoreFactory.getStore(this.store.getPathResolver());
-    const written = await credStore.set(cleanHost, accountId, token);
     this.sshGen.generate();
     return written;
   }

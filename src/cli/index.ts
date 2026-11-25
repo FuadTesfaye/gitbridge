@@ -362,7 +362,9 @@ export function createProgram(name = "gitbridge"): Command {
     .option("-P, --password <pass>", "Password for basic/password auth")
     .option("--host <host>", "Custom host")
     .option("--ssh-key <path>", "SSH key path")
-    .action((opts) => handleAccountAdd(opts));
+    .action(async (opts) => {
+      if (!await handleAccountAdd(opts)) process.exitCode = 1;
+    });
   accountCmd
     .command("use <providerOrAccount> [accountId]")
     .description("Set default provider account")
@@ -375,12 +377,14 @@ export function createProgram(name = "gitbridge"): Command {
     .command("login [provider]")
     .description("Log in to a Git provider (GitHub, GitLab, Bitbucket)")
     .option("-t, --token <token>", "Personal access token")
-    .option("-u, --username <username>", "Username / email for credentials login")
+    .option("-u, --username <username>", "Expected account username (or email for password login)")
     .option("-p, --password <password>", "Password for credentials login")
     .option("--host <host>", "Custom host for enterprise/self-hosted instances")
     .option("--ssh-key <path>", "Path to SSH private key to associate")
     .option("--insecure-http", "Allow cleartext HTTP for self-hosted hosts (credentials will be sent in the clear)")
-    .action((prov, opts) => handleAuthLogin(prov, opts));
+    .action(async (prov, opts) => {
+      if (!await handleAuthLogin(prov, opts)) process.exitCode = 1;
+    });
   authCmd
     .command("logout <provider> [username]")
     .description("Log out of a provider and remove stored tokens")

@@ -2,7 +2,7 @@
   "name": "gitbridge-vscode",
   "displayName": "GitBridge",
   "description": "Universal Git Identity & Multi-Account Management Layer for VS Code, Cursor, and Antigravity IDE",
-  "version": "0.1.0",
+  "version": "0.3.1",
   "publisher": "fuadtesfaye",
   "license": "MIT",
   "repository": {

@@ -621,6 +621,12 @@ export class CommandsController implements vscode.Disposable {
     );
     if (!provider) return;
 
+    const username = await vscode.window.showInputBox({
+      prompt: `Enter the ${provider.value} username you are authorizing:`,
+      validateInput: (val) => (!val.trim() ? "Username cannot be empty." : undefined),
+    });
+    if (!username) return;
+
     const token = await vscode.window.showInputBox({
       prompt: `Enter Personal Access Token (PAT) for ${provider.label}:`,
       password: true,
@@ -630,7 +636,7 @@ export class CommandsController implements vscode.Disposable {
 
     try {
       this.notifications.showInfo(`Connecting ${provider.label}...`);
-      const written = await this.bridge.loginWithToken(provider.value, token);
+      const written = await this.bridge.loginWithToken(provider.value, token.trim(), undefined, username.trim());
       if (written.usedFallback) {
         this.notifications.showWarning(
           `Authenticated with ${provider.label}, but the OS keyring refused the token (${written.fallbackReason}). It is stored in GitBridge's encrypted vault file instead.`
@@ -639,6 +645,10 @@ export class CommandsController implements vscode.Disposable {
         this.notifications.showInfo(`Authenticated with ${provider.label}. Token stored in ${written.backend}.`);
       }
       this.triggerRefresh();
+      const another = await vscode.window.showQuickPick(["Add another account", "Done"], {
+        placeHolder: "Account saved. Connect another account?",
+      });
+      if (another === "Add another account") await this.handleAuthLogin();
     } catch (err: unknown) {
       this.notifications.showError(err instanceof Error ? err.message : String(err));
     }
